@@ -1,0 +1,123 @@
+// JCI Collarint — data model
+// Espelha o schema Supabase (ver supabase/schema.sql). SQLite local para a demo;
+// migração para Postgres/Supabase = preencher .env + rodar supabase/schema.sql.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  passwordHash       String
+  name               String
+  roleTitle          String?
+  city               String?
+  avatarColor        String   @default("#0A1F44")
+  teachSkills        String   @default("[]") // JSON: SkillEntry[] { name, level }
+  learnSkills        String   @default("[]") // JSON: SkillEntry[] { name, level }
+  mainGoal           String?
+  weeklyAvailability String? // "1h" | "2h" | "4h+"
+  teachEmbedding     String? // JSON: { mode: "local"|"openai", vector: number[] }
+  learnEmbedding     String? // JSON: { mode: "local"|"openai", vector: number[] }
+  onboarded          Boolean  @default(false)
+  isAdmin            Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  mentorshipsAsMentor Mentorship[] @relation("Mentor")
+  mentorshipsAsMentee Mentorship[] @relation("Mentee")
+  notifications       Notification[]
+}
+
+model Mentorship {
+  id            String   @id @default(uuid())
+  mentorId      String
+  menteeId      String
+  status        String   @default("pending") // pending | active | declined | completed
+  inviteMessage String?
+  plan          String? // JSON: { generatedBy: "ai"|"template", createdAt, sessions: PlanSession[] }
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mentor        Profile        @relation("Mentor", fields: [mentorId], references: [id])
+  mentee        Profile        @relation("Mentee", fields: [menteeId], references: [id])
+  sessions      Session[]
+  tasks         Task[]
+  coachMessages CoachMessage[]
+  sessionPreps  SessionPrep[]
+
+  @@index([mentorId])
+  @@index([menteeId])
+}
+
+model Session {
+  id           String    @id @default(uuid())
+  mentorshipId String
+  scheduledAt  DateTime?
+  notes        String? // "O que foi discutido"
+  commitments  String? // "Compromissos assumidos"
+  completed    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  mentorship Mentorship @relation(fields: [mentorshipId], references: [id], onDelete: Cascade)
+
+  @@index([mentorshipId])
+}
+
+model Task {
+  id           String    @id @default(uuid())
+  mentorshipId String
+  title        String
+  dueDate      DateTime?
+  completed    Boolean   @default(false)
+  source       String    @default("coach") // coach | user
+  createdAt    DateTime  @default(now())
+
+  mentorship Mentorship @relation(fields: [mentorshipId], references: [id], onDelete: Cascade)
+
+  @@index([mentorshipId])
+}
+
+model CoachMessage {
+  id           String   @id @default(uuid())
+  mentorshipId String
+  role         String // "user" | "assistant"
+  content      String
+  createdAt    DateTime @default(now())
+
+  mentorship Mentorship @relation(fields: [mentorshipId], references: [id], onDelete: Cascade)
+
+  @@index([mentorshipId])
+}
+
+model SessionPrep {
+  id           String   @id @default(uuid())
+  mentorshipId String
+  content      String // pauta + 5 perguntas (markdown)
+  createdAt    DateTime @default(now())
+
+  mentorship Mentorship @relation(fields: [mentorshipId], references: [id], onDelete: Cascade)
+
+  @@index([mentorshipId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String // mentorship_invite | mentorship_accepted | mentorship_declined | session_scheduled | session_recorded | prep_generated
+  title     String
+  body      String?
+  payload   String? // JSON: { mentorshipId? }
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
