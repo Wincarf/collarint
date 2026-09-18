@@ -19,7 +19,7 @@ import {
 export const dynamic = "force-dynamic";
 export const maxDuration = 90;
 
-/** GET /api/mentorships/[id]/coach — coach message history */
+/** GET /api/mentorships/[id]/coach — current (non-archived) coach message history */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireUser(req);
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     }
 
     const messages = await db.coachMessage.findMany({
-      where: { mentorshipId: id },
+      where: { mentorshipId: id, archivedAt: null },
       orderBy: { createdAt: "asc" },
     });
 
@@ -51,6 +51,31 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 interface CoachActions {
   tasks?: Array<{ title?: unknown; dueInDays?: unknown }>;
   completeTasks?: unknown;
+}
+
+/** DELETE /api/mentorships/[id]/coach — start a new conversation:
+ *  archives the current messages (they stay in the database) so the chat
+ *  begins empty. The mentorship context (plan, sessions, tasks) is kept. */
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const user = await requireUser(req);
+    const { id } = await ctx.params;
+
+    const mentorship = await db.mentorship.findUnique({ where: { id } });
+    if (!mentorship) return jsonError("Mentorship not found.", 404);
+    if (mentorship.mentorId !== user.id && mentorship.menteeId !== user.id) {
+      return jsonError("No permission.", 403);
+    }
+
+    const result = await db.coachMessage.updateMany({
+      where: { mentorshipId: id, archivedAt: null },
+      data: { archivedAt: new Date() },
+    });
+
+    return NextResponse.json({ ok: true, archived: result.count });
+  } catch (err) {
+    return handleApiError(err);
+  }
 }
 
 /** POST /api/mentorships/[id]/coach — streams the reply (SSE) and applies task actions.
@@ -80,7 +105,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const [sessions, tasks, history] = await Promise.all([
       db.session.findMany({ where: { mentorshipId: id } }),
       db.task.findMany({ where: { mentorshipId: id } }),
-      db.coachMessage.findMany({ where: { mentorshipId: id }, orderBy: { createdAt: "asc" } }),
+      db.coachMessage.findMany({
+        where: { mentorshipId: id, archivedAt: null },
+        orderBy: { createdAt: "asc" },
+      }),
     ]);
 
     const context = buildCoachContext({

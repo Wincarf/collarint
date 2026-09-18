@@ -162,3 +162,24 @@ Work Log:
 Stage Summary:
 - Coach agora responde em streaming (progressivo nos dois modos), conclui tarefas existentes pelo chat com fuzzy match, cria tarefas com títulos acionáveis (com guards), chips de sugestão reduzem atrito na demo, extração de ações tem retry JSON — coach-only para o mentee mantido
 - Demo resetada: 12 usuários, password demo1234, mentorias/sessões/tarefas do seed original
+
+---
+Task ID: 8
+Agent: Super Z (main)
+Task: Deletar tarefas + conversas novas no AI Coach (solicitação do usuário)
+
+Work Log:
+- Schema: coluna `archivedAt DateTime?` adicionada a CoachMessage (prisma db push OK, client regenerado)
+- Backend coach/route.ts: GET e POST filtram `archivedAt: null` (só a conversa atual entra no histórico e no contexto da IA); novo endpoint DELETE /api/mentorships/[id]/coach — arquiva as mensagens da conversa corrente via updateMany (nada é apagado do banco) com checagem de permissão mentor/mentee
+- api-client.ts: novos métodos `deleteTask(taskId)` (DELETE /api/tasks/[id] — endpoint já existia, falta só UI) e `coachNewConversation(id)`
+- UI Tasks (mentorship-view.tsx): TaskRow ganhou botão lixeira (Trash2) — sempre visível no mobile, hover no desktop (group/opacity), preventDefault+stopPropagation para o clique não alternar o checkbox (a row é um <label>); TasksCard ganhou `remove()` com estado deletingId (row fica opacity-50 durante o request), refresh via onChanged e toast "Task deleted"; delete só aparece para o mentee (editable), visão do mentor continua somente leitura
+- UI Coach (mentorship-view.tsx): botão MessageSquarePlus "New conversation" no header do card (desabilitado sem mensagens ou durante envio); handler arquiva via API, limpa messages/streamText e mostra toast; estado vazio volta com os 4 chips de sugestão
+- QA backend (curl): login Lucas → histórico 7 msgs → DELETE archived:7 → GET 0 msgs; tasks 6 → DELETE → 5
+- QA contexto pós-arquivo: POST coach com histórico vazio respondeu citando Sessão 1, BANT, próxima sessão 09/22 e criou task "Schedule mock discovery calls" — IA mantém todo o dossiê da mentoria sem histórico de chat
+- QA browser (agent-browser): login rápido Lucas → mentoria → 6 botões "Delete task" visíveis → clique removeu (6→5, checkbox não alternou) → botão New conversation esvaziou o chat e os chips voltaram → após reload e sessão nova do browser o estado persistiu (dados vêm da API) → screenshots em scripts/task8-mentorship.png
+- tsc e lint limpos (só erros pré-existentes em examples/ e skills/); seed resetado ao final (pristine)
+
+Stage Summary:
+- Mentee pode deletar qualquer tarefa (criada por ela ou pelo Coach) com um clique na lixeira; mentor mantém visão somente leitura
+- "New conversation" no AI Coach arquiva a conversa corrente (recuperável no banco via archivedAt) e começa do zero com os chips — o Coach continua sabendo objetivo, plano, sessões e tarefas
+- Nenhuma quebra de contrato: DTOs inalterados, endpoints existentes intactos

@@ -143,6 +143,13 @@ export const api = {
       `/api/mentorships/${id}/coach`
     ),
 
+  // Archives the current messages so a new conversation can start (the old
+  // ones stay in the database; the mentorship context is kept).
+  coachNewConversation: (id: string) =>
+    request<{ ok: boolean; archived: number }>(`/api/mentorships/${id}/coach`, {
+      method: "DELETE",
+    }),
+
   coachSendStream: async (
     id: string,
     message: string,
@@ -227,6 +234,9 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ completed }),
     }),
+
+  deleteTask: (taskId: string) =>
+    request<{ ok: boolean }>(`/api/tasks/${taskId}`, { method: "DELETE" }),
 
   notifications: () =>
     request<{ notifications: NotificationDTO[]; unread: number }>("/api/notifications"),

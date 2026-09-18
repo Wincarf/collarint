@@ -85,11 +85,12 @@ model Task {
 }
 
 model CoachMessage {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   mentorshipId String
-  role         String // "user" | "assistant"
+  role         String    // "user" | "assistant"
   content      String
-  createdAt    DateTime @default(now())
+  archivedAt   DateTime? // set when the user starts a new conversation
+  createdAt    DateTime  @default(now())
 
   mentorship Mentorship @relation(fields: [mentorshipId], references: [id], onDelete: Cascade)
 

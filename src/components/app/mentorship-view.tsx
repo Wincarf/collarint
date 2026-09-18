@@ -29,10 +29,12 @@ import {
   Circle,
   Loader2,
   MessageSquare,
+  MessageSquarePlus,
   Plus,
   Route,
   Send,
   Sparkles,
+  Trash2,
   Users,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -458,6 +460,7 @@ function TasksCard({
 }) {
   const [newTitle, setNewTitle] = useState("");
   const [adding, setAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const pending = tasks.filter((t) => !t.completed);
@@ -469,6 +472,20 @@ function TasksCard({
       onChanged();
     } catch (e) {
       toast({ title: "Error", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+    }
+  }
+
+  async function remove(task: TaskDTO) {
+    if (deletingId) return;
+    setDeletingId(task.id);
+    try {
+      await api.deleteTask(task.id);
+      onChanged();
+      toast({ title: "Task deleted", description: task.title });
+    } catch (e) {
+      toast({ title: "Error", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -497,10 +514,10 @@ function TasksCard({
             </p>
           )}
           {pending.map((t) => (
-            <TaskRow key={t.id} task={t} onToggle={toggle} />
+            <TaskRow key={t.id} task={t} onToggle={toggle} onDelete={editable ? remove : undefined} deleting={deletingId === t.id} />
           ))}
           {done.map((t) => (
-            <TaskRow key={t.id} task={t} onToggle={toggle} />
+            <TaskRow key={t.id} task={t} onToggle={toggle} onDelete={editable ? remove : undefined} deleting={deletingId === t.id} />
           ))}
         </div>
         {editable && (
@@ -521,13 +538,24 @@ function TasksCard({
   );
 }
 
-function TaskRow({ task, onToggle }: { task: TaskDTO; onToggle: (task: TaskDTO) => void }) {
+function TaskRow({
+  task,
+  onToggle,
+  onDelete,
+  deleting,
+}: {
+  task: TaskDTO;
+  onToggle: (task: TaskDTO) => void;
+  onDelete?: (task: TaskDTO) => void;
+  deleting?: boolean;
+}) {
   const overdue = task.dueDate && !task.completed && new Date(task.dueDate) < new Date();
   return (
     <label
       className={cn(
-        "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
-        task.completed ? "border-transparent bg-secondary/60" : "border-border bg-card hover:border-gold/40"
+        "group flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
+        task.completed ? "border-transparent bg-secondary/60" : "border-border bg-card hover:border-gold/40",
+        deleting && "pointer-events-none opacity-50"
       )}
     >
       <Checkbox
@@ -536,7 +564,7 @@ function TaskRow({ task, onToggle }: { task: TaskDTO; onToggle: (task: TaskDTO) 
         className="mt-0.5"
         aria-label={task.title}
       />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className={cn("text-sm", task.completed ? "text-muted-foreground line-through" : "text-navy font-medium")}>
           {task.title}
         </p>
@@ -547,6 +575,24 @@ function TaskRow({ task, onToggle }: { task: TaskDTO; onToggle: (task: TaskDTO) 
           </p>
         )}
       </div>
+      {onDelete && (
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          disabled={deleting}
+          onClick={(e) => {
+            // preventDefault: the row is a <label> — without it the checkbox would toggle too
+            e.preventDefault();
+            e.stopPropagation();
+            onDelete(task);
+          }}
+          className="h-7 w-7 shrink-0 text-muted-foreground opacity-100 transition-opacity hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+          aria-label={`Delete task: ${task.title}`}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      )}
     </label>
   );
 }
@@ -641,6 +687,21 @@ function CoachChat({
     void sendText(text);
   }
 
+  async function newConversation() {
+    if (sending) return;
+    try {
+      await api.coachNewConversation(mentorshipId);
+      setMessages([]);
+      setStreamText("");
+      toast({
+        title: "New conversation started",
+        description: "Previous messages were archived. The Coach still knows your goal, plan and tasks.",
+      });
+    } catch (e) {
+      toast({ title: "Error", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+    }
+  }
+
   async function prepareSession() {
     setPreparing(true);
     try {
@@ -678,6 +739,17 @@ function CoachChat({
             <p className="text-sm font-bold text-navy">AI Coach</p>
             <p className="text-xs text-muted-foreground">Support between sessions · always with your mentorship context</p>
           </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={newConversation}
+            disabled={sending || !loaded || messages.length === 0}
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-navy"
+            aria-label="New conversation"
+            title="New conversation"
+          >
+            <MessageSquarePlus className="h-4 w-4" />
+          </Button>
         </div>
         <Button
           size="sm"
