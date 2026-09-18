@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { createSessionToken, setSessionCookie, verifyPassword } from "@/lib/auth";
-import { handleApiError, jsonError } from "@/lib/api-utils";
+import { handleApiError, jsonError, rateLimit, clientIp } from "@/lib/api-utils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,6 +10,11 @@ export async function POST(req: NextRequest) {
     const password = String(body?.password ?? "");
 
     if (!email || !password) return jsonError("Please enter your email and password.");
+
+    // Brute-force brake: 10 attempts per minute per email+IP.
+    if (!rateLimit(`login:${email}:${clientIp(req)}`, 10, 60_000)) {
+      return jsonError("Too many sign-in attempts. Please wait a minute and try again.", 429);
+    }
 
     const profile = await db.profile.findUnique({ where: { email } });
     if (!profile || !verifyPassword(password, profile.passwordHash)) {

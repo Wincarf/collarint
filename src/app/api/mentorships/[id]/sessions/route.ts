@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           userId: mentorship.menteeId,
           type: "session_scheduled",
           title: `Next session with ${firstName(mentorship.mentor.name)} scheduled`,
-          body: date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }),
+          body: date.toLocaleString("en-US", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }),
           payload: JSON.stringify({ mentorshipId: id }),
         },
       });

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { handleApiError, jsonError } from "@/lib/api-utils";
+import { handleApiError, jsonError, rateLimit } from "@/lib/api-utils";
 import { buildPrepPrompt, buildTemplatePrep } from "@/lib/coach-context";
 import { aiMode, chatComplete } from "@/lib/ai";
 import { parsePlan } from "@/lib/serialize";
@@ -29,6 +29,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return jsonError("Only the mentee generates the session preparation.", 403);
     }
     if (mentorship.status !== "active") return jsonError("Mentorship is not active.");
+
+    // AI call per request — cap abuse (10 preparations per 5 minutes).
+    if (!rateLimit(`prep:${user.id}`, 10, 5 * 60_000)) {
+      return jsonError("Too many preparations in a row. Please wait a moment.", 429);
+    }
 
     const [sessions, tasks, messages] = await Promise.all([
       db.session.findMany({ where: { mentorshipId: id } }),

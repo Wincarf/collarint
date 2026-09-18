@@ -183,3 +183,20 @@ Stage Summary:
 - Mentee pode deletar qualquer tarefa (criada por ela ou pelo Coach) com um clique na lixeira; mentor mantém visão somente leitura
 - "New conversation" no AI Coach arquiva a conversa corrente (recuperável no banco via archivedAt) e começa do zero com os chips — o Coach continua sabendo objetivo, plano, sessões e tarefas
 - Nenhuma quebra de contrato: DTOs inalterados, endpoints existentes intactos
+
+---
+Task ID: 9
+Agent: Super Z (main)
+Task: Auditoria de segurança + retoques finais + README completo
+
+Work Log:
+- Auditoria das 17 rotas API + auth.ts + api-utils.ts + serialize.ts + renderer de markdown: permissões por participação consistentes (respond=só mentor, schedule=só mentor, prep=só mentee, admin=isAdmin), passwordHash nunca sai nos DTOs, react-markdown sem rehype-raw (HTML cru escapado), .env* fora do git
+- Achados corrigidos: (1) handleApiError vazia err.message em 500 → mensagem genérica, detalhe só no log do servidor; (2) notificação de sessão agendada formatava data em pt-BR (resquício da tradução) → en-US; (3) sem verificação de Origin em mutações → src/proxy.ts (convenção proxy do Next 16, confirmada no bundle: middlewareModule.proxy||middleware) rejeita POST/PATCH/PUT/DELETE com Origin host ≠ deployment host — bloqueia CSRF de forms cross-site (incl. text/plain) sem quebrar o preview em iframe; (4) sem rate limit → rateLimit() sliding window em memória: login 10/min por email+IP, register 10/min por IP, coach 30/5min por usuário, prep 10/5min por usuário; (5) headers de segurança no next.config (nosniff, Referrer-Policy, Permissions-Policy; X-Frame-Options propositalmente ausente p/ iframe); (6) cap de email 120 no register; (7) console.warn único quando AUTH_SECRET ausente
+- Correção durante QA: headers() do next.config deve retornar array de rotas (retornei objeto → "headers must return an array"; corrigido)
+- Verificações curl: headers presentes | POST com Origin estrangeiro = 403 | Origin correto = 200 | sem Origin (curl) = 200 | 8 logins errados → 429 no 9º, outro email não afetado, janela libera após 1min
+- Browser smoke pós-hardening: login rápido → mentoria → tasks com lixeira + Coach ok, zero erros de página; seed conferido pristine (3 tasks, 2 msgs do coach)
+- tsc/lint limpos; README.md reescrito: features novas (streaming, chips, concluir tarefas pelo chat, new conversation, delete de tasks), seção Security (auditoria em tabela), API reference completa (23 endpoints com acesso e propósito), estrutura atualizada (proxy.ts, icon.svg, api-utils), notas técnicas (guards do extrator, degradação graciosa)
+
+Stage Summary:
+- Projeto auditado e endurecido sem nenhuma quebra de comportamento: auth robusta, autorização por participação, CSRF via proxy, rate limits, headers, erros sem vazamento
+- README documenta tudo que está embutido e pronto (features, demo, segurança, API, migração Supabase)

@@ -12,7 +12,13 @@ const COOKIE_NAME = "jci_session";
 const HEADER_NAME = "x-session-token";
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
 
+let warnedAboutSecret = false;
+
 function authSecret(): string {
+  if (!process.env.AUTH_SECRET && !warnedAboutSecret) {
+    warnedAboutSecret = true;
+    console.warn("[auth] AUTH_SECRET is not set — using the development fallback. Set it in .env before deploying.");
+  }
   return process.env.AUTH_SECRET || "jci-collarint-dev-secret-change-in-prod";
 }
 

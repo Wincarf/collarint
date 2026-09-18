@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Task } from "@prisma/client";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { handleApiError, jsonError } from "@/lib/api-utils";
+import { handleApiError, jsonError, rateLimit } from "@/lib/api-utils";
 import { coachMessageToDTO } from "@/lib/serialize";
 import { buildCoachContext } from "@/lib/coach-context";
 import {
@@ -89,6 +89,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     if (message.length === 0) return jsonError("Write a message.");
     if (message.length > 2000) return jsonError("Message too long (max. 2000 characters).");
+
+    // Each AI reply costs real calls — keep runaway loops away (30/5min per user).
+    if (!rateLimit(`coach:${user.id}`, 30, 5 * 60_000)) {
+      return jsonError("You are sending messages too quickly. Take a short break and try again.", 429);
+    }
 
     const mentorship = await db.mentorship.findUnique({
       where: { id },
