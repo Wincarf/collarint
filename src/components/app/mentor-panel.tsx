@@ -1,7 +1,7 @@
 "use client";
 
-// Painel do mentor: convites pendentes (aceitar/recusar), mentorias ativas,
-// próximos agendamentos e visualização da preparação do mentorado.
+// Mentor panel: pending invites (accept/decline), active mentorships,
+// upcoming sessions and a view of the mentee's session prep.
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api-client";
@@ -10,7 +10,7 @@ import { InitialsAvatar, SectionTitle, StatusBadge, EmptyState } from "./ui-bits
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { format, formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { CalendarDays, Check, HandHeart, Loader2, Route, Users, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useApp } from "./store";
@@ -36,16 +36,16 @@ export function MentorPanel() {
       const res = await api.respond(mentorship.id, action);
       if (action === "accept") {
         toast({
-          title: "Mentoria aceita!",
-          description: "Plano de 4 sessões gerado com base no objetivo do mentorado.",
+          title: "Mentorship accepted!",
+          description: "4-session plan generated based on the mentee's goal.",
         });
       } else {
-        toast({ title: "Proposta recusada", description: "O mentorado será direcionado a novos matches." });
+        toast({ title: "Request declined", description: "The mentee will be guided to new matches." });
       }
       void res;
       load();
     } catch (e) {
-      toast({ title: "Erro", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+      toast({ title: "Error", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
     } finally {
       setResponding(null);
     }
@@ -65,19 +65,19 @@ export function MentorPanel() {
 
   return (
     <div className="space-y-6">
-      <SectionTitle title="Painel do mentor" subtitle="Solicitações, mentorias ativas e próximos compromissos" />
+      <SectionTitle title="Mentor panel" subtitle="Requests, active mentorships and upcoming commitments" />
 
-      {/* Convites pendentes */}
+      {/* Pending invites */}
       <section>
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          <HandHeart className="h-4 w-4 text-gold" /> Convites recebidos
+          <HandHeart className="h-4 w-4 text-gold" /> Invites received
           {pending.length > 0 && (
             <span className="rounded-full bg-gold px-2 py-0.5 text-xs font-bold text-navy">{pending.length}</span>
           )}
         </h3>
         {pending.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border bg-card p-5 text-sm text-muted-foreground">
-            Nenhum convite novo no momento. Quando um membro te propor mentoria, ele aparece aqui.
+            No new invites right now. When a member requests your mentorship, it will appear here.
           </p>
         ) : (
           <div className="space-y-3">
@@ -93,7 +93,7 @@ export function MentorPanel() {
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {m.mentee.roleTitle}
-                        {m.mentee.city ? ` · ${m.mentee.city}` : ""} · quer aprender{" "}
+                        {m.mentee.city ? ` · ${m.mentee.city}` : ""} · wants to learn{" "}
                         {m.mentee.learnSkills.map((s) => s.name).slice(0, 3).join(", ")}
                       </p>
                       <div className="mt-3 rounded-lg bg-gold-soft/50 p-3">
@@ -111,7 +111,7 @@ export function MentorPanel() {
                           ) : (
                             <Check className="h-4 w-4" />
                           )}
-                          Aceitar mentoria
+                          Accept mentorship
                         </Button>
                         <Button
                           size="sm"
@@ -125,7 +125,7 @@ export function MentorPanel() {
                           ) : (
                             <X className="h-4 w-4" />
                           )}
-                          Recusar
+                          Decline
                         </Button>
                       </div>
                     </div>
@@ -137,16 +137,16 @@ export function MentorPanel() {
         )}
       </section>
 
-      {/* Mentorias ativas */}
+      {/* Active mentorships */}
       <section>
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          <Users className="h-4 w-4 text-gold" /> Mentorias ativas
+          <Users className="h-4 w-4 text-gold" /> Active mentorships
         </h3>
         {active.length === 0 ? (
           <EmptyState
             icon={<Users className="h-5 w-5" />}
-            title="Você ainda não orienta ninguém"
-            description="Aceite um convite acima para começar — ou aguarde novos membros descobrirem seu perfil no matching."
+            title="You are not mentoring anyone yet"
+            description="Accept an invite above to get started — or wait for new members to discover your profile in matching."
           />
         ) : (
           <div className="space-y-3">
@@ -166,25 +166,25 @@ export function MentorPanel() {
                           <StatusBadge status={m.status} />
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {m.mentee.roleTitle} · {completed}/{m.plan?.sessions.length ?? 4} sessões · objetivo:{" "}
+                          {m.mentee.roleTitle} · {completed}/{m.plan?.sessions.length ?? 4} sessions · goal:{" "}
                           {m.mentee.mainGoal?.slice(0, 70)}
                           {(m.mentee.mainGoal?.length ?? 0) > 70 ? "..." : ""}
                         </p>
                         {next ? (
                           <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-3 py-1 text-xs font-medium text-[#7a5c1f]">
                             <CalendarDays className="h-3.5 w-3.5" />
-                            Próxima sessão: {format(new Date(next.scheduledAt!), "d 'de' MMM 'às' HH:mm", { locale: ptBR })}
+                            Next session: {format(new Date(next.scheduledAt!), "MMM d 'at' HH:mm", { locale: enUS })}
                             {" "}
-                            ({formatDistanceToNow(new Date(next.scheduledAt!), { locale: ptBR, addSuffix: true })})
+                            ({formatDistanceToNow(new Date(next.scheduledAt!), { locale: enUS, addSuffix: true })})
                           </p>
                         ) : (
                           <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
-                            Sem sessão agendada
+                            No session scheduled
                           </p>
                         )}
                       </div>
                       <Button onClick={() => setView({ name: "mentorship", id: m.id })} className="gap-2 bg-navy hover:bg-navy-light">
-                        <Route className="h-4 w-4" /> Abrir mentoria
+                        <Route className="h-4 w-4" /> Open mentorship
                       </Button>
                     </div>
                   </CardContent>
@@ -197,7 +197,7 @@ export function MentorPanel() {
 
       {declined.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          {declined.length} proposta{declined.length > 1 ? "s" : ""} recusada{declined.length > 1 ? "s" : ""} recentemente.
+          {declined.length} request{declined.length > 1 ? "s" : ""} declined recently.
         </p>
       )}
     </div>

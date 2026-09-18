@@ -10,11 +10,11 @@ import type { AdminStats } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/admin/stats — métricas + mapa de calor de skills (apenas admin) */
+/** GET /api/admin/stats — metrics + skills heatmap (admin only) */
 export async function GET(req: NextRequest) {
   try {
     const user = await requireUser(req);
-    if (!user.isAdmin) return jsonError("Acesso restrito à administração.", 403);
+    if (!user.isAdmin) return jsonError("Access restricted to administrators.", 403);
 
     const [profiles, mentorships, sessions, tasks] = await Promise.all([
       db.profile.findMany(),
@@ -28,9 +28,9 @@ export async function GET(req: NextRequest) {
     const activeMentorships = mentorships.filter((m) => m.status === "active").length;
     const pendingInvites = mentorships.filter((m) => m.status === "pending").length;
 
-    // Mapa de calor: para cada skill do catálogo, conta oferta (ensina) e demanda (quer aprender)
+    // Heatmap: for each catalog skill, count supply (teaches) and demand (wants to learn)
     const allSkills: string[] = [...PRESET_SKILLS];
-    // inclui skills customizadas que apareçam nos perfis
+    // includes custom skills that appear in profiles
     for (const p of onboarded) {
       for (const s of [...parseSkills(p.teachSkills), ...parseSkills(p.learnSkills)]) {
         if (!allSkills.some((k) => skillsMatch(k, s.name))) allSkills.push(s.name);
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
       activeMentorships,
       pendingInvites,
       completedSessions,
-      hoursMentored: completedSessions, // 1 sessão ≈ 1h (padrão do programa)
+      hoursMentored: completedSessions, // 1 session ≈ 1h (program standard)
       totalTasks: tasks.length,
       completedTasks: tasks.filter((t) => t.completed).length,
       heatmap,

@@ -12,8 +12,8 @@ export const maxDuration = 60;
 
 /**
  * POST /api/mentorships/[id]/respond
- * Mentor aceita ({action:"accept"}) ou recusa ({action:"decline"}).
- * Ao aceitar, gera automaticamente o plano de 4 sessões (IA com fallback).
+ * The mentor accepts ({action:"accept"}) or declines ({action:"decline"}).
+ * On accept, automatically generates the 4-session plan (AI with fallback).
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -27,12 +27,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       include: { mentor: true, mentee: true },
     });
 
-    if (!mentorship) return jsonError("Mentoria não encontrada.", 404);
+    if (!mentorship) return jsonError("Mentorship not found.", 404);
     if (mentorship.mentorId !== user.id) {
-      return jsonError("Apenas o mentor pode responder ao convite.", 403);
+      return jsonError("Only the mentor can respond to the invite.", 403);
     }
     if (mentorship.status !== "pending") {
-      return jsonError("Este convite já foi respondido.", 409);
+      return jsonError("This invite has already been answered.", 409);
     }
 
     if (action === "decline") {
@@ -44,20 +44,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         data: {
           userId: mentorship.menteeId,
           type: "mentorship_declined",
-          title: `${firstName(mentorship.mentor.name)} não pôde aceitar sua proposta de mentoria`,
-          body: "Explore outros matches compatíveis com seu objetivo — há mais mentores na plataforma.",
+          title: `${firstName(mentorship.mentor.name)} could not accept your mentorship request`,
+          body: "Explore other matches that fit your goal — there are more mentors on the platform.",
           payload: JSON.stringify({ mentorshipId: id }),
         },
       });
       return NextResponse.json({ ok: true, status: declined.status });
     }
 
-    if (action !== "accept") return jsonError("Ação inválida. Use 'accept' ou 'decline'.");
+    if (action !== "accept") return jsonError("Invalid action. Use 'accept' or 'decline'.");
 
-    // 1) marca como ativa
+    // 1) marks as active
     await db.mentorship.update({ where: { id }, data: { status: "active" } });
 
-    // 2) gera o plano de 4 sessões (IA → fallback template)
+    // 2) generates the 4-session plan (AI → template fallback)
     const plan = await generatePlan(
       mentorship.mentee,
       mentorship.mentor,
@@ -69,23 +69,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       data: { plan: JSON.stringify(plan) },
     });
 
-    // 3) mensagem de boas-vindas do coach com o contexto do plano
+    // 3) coach welcome message with the plan context
     const sess1 = plan.sessions[0];
     await db.coachMessage.create({
       data: {
         mentorshipId: id,
         role: "assistant",
-        content: `Boa notícia: **${firstName(mentorship.mentor.name)}** aceitou ser seu mentor!\n\nJá preparei um **plano de 4 sessões** conectando seu objetivo com a experiência dele. Começamos pela **Sessão 1 — ${sess1?.title ?? "Diagnóstico"}**: ${sess1?.objective ?? "alinhamento inicial"}.\n\nUse este chat sempre que precisar de ajuda entre as sessões — posso montar sua pauta, revisar compromissos e criar tarefas.\n\n**Ação concreta:** converse com ${firstName(mentorship.mentor.name)} para agendar a Sessão 1 e me diga a data — eu te preparo para ela.`,
+        content: `Good news: **${firstName(mentorship.mentor.name)}** accepted to be your mentor!\n\nI have already prepared a **4-session plan** connecting your goal with their experience. We start with **Session 1 — ${sess1?.title ?? "Diagnosis"}**: ${sess1?.objective ?? "initial alignment"}.\n\nUse this chat whenever you need help between sessions — I can put together your agenda, review commitments and create tasks.\n\n**Concrete action:** talk to ${firstName(mentorship.mentor.name)} to schedule Session 1 and tell me the date — I will get you ready for it.`,
       },
     });
 
-    // 4) notifica o mentorado
+    // 4) notifies the mentee
     await db.notification.create({
       data: {
         userId: mentorship.menteeId,
         type: "mentorship_accepted",
-        title: `${firstName(mentorship.mentor.name)} aceitou sua mentoria!`,
-        body: `Plano de 4 sessões gerado. Sessão 1: ${sess1?.title ?? "Diagnóstico"}.`,
+        title: `${firstName(mentorship.mentor.name)} accepted your mentorship!`,
+        body: `4-session plan generated. Session 1: ${sess1?.title ?? "Diagnosis"}.`,
         payload: JSON.stringify({ mentorshipId: id }),
       },
     });

@@ -6,7 +6,7 @@ import { mentorshipToDTO } from "@/lib/serialize";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/mentorships — lista mentorias do usuário (como mentor ou mentorado) */
+/** GET /api/mentorships — lists the user's mentorships (as mentor or mentee) */
 export async function GET(req: NextRequest) {
   try {
     const user = await requireUser(req);
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** POST /api/mentorships — propor mentoria a um mentor */
+/** POST /api/mentorships — propose a mentorship to a mentor */
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser(req);
@@ -42,14 +42,14 @@ export async function POST(req: NextRequest) {
     const mentorId = String(body?.mentorId ?? "");
     const message = String(body?.message ?? "").trim();
 
-    if (!mentorId) return jsonError("Selecione um mentor.");
-    if (mentorId === user.id) return jsonError("Você não pode propor mentoria para si mesmo.");
-    if (message.length < 10) return jsonError("Escreva uma mensagem de convite (mínimo 10 caracteres).");
+    if (!mentorId) return jsonError("Select a mentor.");
+    if (mentorId === user.id) return jsonError("You cannot request a mentorship from yourself.");
+    if (message.length < 10) return jsonError("Write an invite message (minimum 10 characters).");
 
     const mentor = await db.profile.findUnique({ where: { id: mentorId } });
-    if (!mentor || !mentor.onboarded) return jsonError("Mentor não encontrado.", 404);
+    if (!mentor || !mentor.onboarded) return jsonError("Mentor not found.", 404);
 
-    // Evita duplicidade: convite pendente ou mentoria ativa já existente com o par
+    // Prevents duplicates: pending invite or active mentorship already existing for the pair
     const existing = await db.mentorship.findFirst({
       where: {
         mentorId,
@@ -60,8 +60,8 @@ export async function POST(req: NextRequest) {
     if (existing) {
       return jsonError(
         existing.status === "pending"
-          ? "Você já tem um convite pendente com este mentor."
-          : "Você já tem uma mentoria ativa com este mentor.",
+          ? "You already have a pending invite with this mentor."
+          : "You already have an active mentorship with this mentor.",
         409
       );
     }
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       data: {
         userId: mentorId,
         type: "mentorship_invite",
-        title: `${user.name} quer ser mentorado por você`,
+        title: `${user.name} wants you as their mentor`,
         body: `"${message.slice(0, 140)}${message.length > 140 ? "..." : ""}"`,
         payload: JSON.stringify({ mentorshipId: created.id }),
       },

@@ -1,113 +1,113 @@
-# JCI Collarint — Plataforma de Mentoria por Skill Matching
+# JCI Collarint — Skill-Based Mentoring Platform
 
-MVP da plataforma da **JCI (Junior Chamber International)** que conecta membros experientes (mentores) a quem busca desenvolvimento profissional (mentorados), com **matching semântico por skills** e um **IA Coach** que acompanha o mentorado entre as sessões.
+MVP of the **JCI (Junior Chamber International)** platform that connects experienced members (mentors) with those seeking professional development (mentees), featuring **semantic skill matching** and an **AI Coach** that supports the mentee between sessions.
 
-## Destaques do MVP
+## MVP highlights
 
-| Módulo | O que faz |
+| Module | What it does |
 |---|---|
-| Onboarding | Cadastro/login por email + wizard de 3 passos (ensinar / aprender / objetivo + disponibilidade) |
-| Matching semântico | Top 5 mentores por similaridade de cosseno entre embeddings, score %, skills em comum e frase explicativa por IA |
-| Fluxo de mentoria | Proposta → notificação → aceite/recusa → plano de 4 sessões gerado por IA → agendamento → registro de sessão |
-| IA Coach | Chat persistente com contexto total da mentoria, criação de tarefas com prazo e botão "Preparar próxima sessão" (pauta + 5 perguntas, com copiar) |
-| Painel do mentor | Convites, mentorias ativas, próximos agendamentos e visualização da preparação do mentorado |
-| Dashboard admin | Mapa de calor de skills (abunda/rara) + métricas do programa |
+| Onboarding | Email sign-up/login + 3-step wizard (teach / learn / goal + availability) |
+| Semantic matching | Top 5 mentors by cosine similarity between embeddings, % score, shared skills and an AI-written explanation |
+| Mentorship flow | Request → notification → accept/decline → AI-generated 4-session plan → scheduling → session logging |
+| AI Coach | Persistent chat with full mentorship context, task creation with due dates and a "Prepare next session" button (agenda + 5 questions, with copy) |
+| Mentor panel | Invites, active mentorships, upcoming sessions and the mentee's preparation view |
+| Admin dashboard | Skills heatmap (abundant/scarce) + program metrics |
 
 ## Stack
 
 - **Next.js 16 (App Router) + TypeScript**
-- **Tailwind CSS 4 + shadcn/ui** (identidade: navy `#0A1F44`, dourado `#D4A843`)
-- **Prisma + SQLite** (demo local) — schema Postgres/Supabase pronto em `supabase/schema.sql`
-- **OpenAI** (`gpt-4o-mini` + `text-embedding-3-small`) **com fallback automático**: sem chave de API, o chat usa o SDK de IA do ambiente e o matching usa análise léxica local — a demo **nunca quebra**
+- **Tailwind CSS 4 + shadcn/ui** (identity: navy `#0A1F44`, gold `#D4A843`)
+- **Prisma + SQLite** (local demo) — Postgres/Supabase schema ready in `supabase/schema.sql`
+- **OpenAI** (`gpt-4o-mini` + `text-embedding-3-small`) **with automatic fallback**: without an API key, the chat uses the environment's AI SDK and matching uses local lexical analysis — the demo **never breaks**
 
-## Setup em 5 passos
+## Setup in 5 steps
 
 ```bash
-# 1. Instalar dependências
+# 1. Install dependencies
 bun install
 
-# 2. Configurar variáveis de ambiente (opcional abrir chaves)
+# 2. Set environment variables (optional to plug in keys)
 cp .env.example .env
-#   → OPENAI_API_KEY (opcional): ativa gpt-4o-mini + text-embedding-3-small
-#   → sem chave, o modo fallback é usado automaticamente
+#   → OPENAI_API_KEY (optional): enables gpt-4o-mini + text-embedding-3-small
+#   → without a key, fallback mode is used automatically
 
-# 3. Criar o schema no banco local
+# 3. Create the local database schema
 bun run db:push
 
-# 4. Popular os dados de demonstração (12 membros + 2 mentorias ativas)
+# 4. Seed the demo data (12 members + 2 active mentorships)
 bun scripts/seed.ts
 
-# 5. Rodar
+# 5. Run
 bun run dev
-#    → abra http://localhost:3000
+#    → open http://localhost:3000
 ```
 
-### Contas de demonstração (senha: `demo1234`)
+### Demo accounts (password: `demo1234`)
 
-| Conta | Papel na demo |
+| Account | Role in the demo |
 |---|---|
-| `lucas@demo.jci` | Mentorado com mentoria ativa (Marcos), plano, tarefas e histórico de coach |
-| `marcos@demo.jci` | Mentor da mentoria ativa com Lucas |
-| `carlos@demo.jci` | Mentor com **convite pendente** de Rafael (teste aceitar/recusar) |
-| `patricia@demo.jci` | Mentorado da 2ª mentoria ativa (Marina) |
-| `admin@jci.org.br` | Acesso ao dashboard administrativo |
+| `lucas@demo.jci` | Mentee with an active mentorship (Marcos), plan, tasks and coach history |
+| `marcos@demo.jci` | Mentor of the active mentorship with Lucas |
+| `carlos@demo.jci` | Mentor with a **pending invite** from Rafael (test accept/decline) |
+| `patricia@demo.jci` | Mentee of the 2nd active mentorship (Marina) |
+| `admin@jci.org.br` | Access to the admin dashboard |
 
-A tela de login tem botões de **acesso rápido** para todas elas.
+The login screen has **quick access** buttons for all of them.
 
-## Fluxo completo de demonstração (critério de aceite)
+## Full demo flow (acceptance criteria)
 
-1. **Login** com `lucas@demo.jci` (acesso rápido)
-2. **Onboarding** (novo usuário): wizard de 3 passos gera embeddings do perfil
-3. **Matches**: `/Matches` mostra top 5 com score % e explicação por IA
-4. **Propor mentoria**: botão no card → mensagem de convite
-5. **Aceite**: entre com `carlos@demo.jci` → sino de notificação → Painel do mentor → **Aceitar** (o plano de 4 sessões é gerado automaticamente)
-6. **IA Coach**: volte para o mentorado → chat com contexto real (objetivo, plano, sessões, tarefas) → o Coach cria tarefas com prazo
-7. **Preparar próxima sessão**: gera pauta + 5 perguntas → botão de copiar → o mentor enxerga a preparação no painel dele
-8. **Sessão**: mentor agenda, registra "o que foi discutido" + "compromissos" e conclui
-9. **Admin**: login com `admin@jci.org.br` → heatmap de skills + métricas
+1. **Sign in** with `lucas@demo.jci` (quick access)
+2. **Onboarding** (new user): the 3-step wizard generates the profile's embeddings
+3. **Matches**: `/Matches` shows the top 5 with % score and AI explanation
+4. **Request mentorship**: button on the card → invite message
+5. **Accept**: sign in with `carlos@demo.jci` → notification bell → Mentor panel → **Accept** (the 4-session plan is generated automatically)
+6. **AI Coach**: go back to the mentee → chat with real context (goal, plan, sessions, tasks) → the Coach creates tasks with due dates
+7. **Prepare next session**: generates agenda + 5 questions → copy button → the mentor sees the preparation in their panel
+8. **Session**: mentor schedules, logs "what was discussed" + "commitments" and completes
+9. **Admin**: sign in with `admin@jci.org.br` → skills heatmap + metrics
 
-## Migração para Supabase (produção)
+## Supabase migration (production)
 
-O schema completo (tabelas, triggers, **RLS** e dica de `pgvector`) está em [`supabase/schema.sql`](supabase/schema.sql). Resumo:
+The full schema (tables, triggers, **RLS** and a `pgvector` hint) is in [`supabase/schema.sql`](supabase/schema.sql). Summary:
 
-1. Crie o projeto em [supabase.com](https://supabase.com)
-2. SQL Editor → cole `supabase/schema.sql` → Run
-3. Preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` no `.env`
-4. Ative o Auth por email em Authentication → Providers
-5. Sincronize os perfis (cadastro pela UI ou seed)
+1. Create the project at [supabase.com](https://supabase.com)
+2. SQL Editor → paste `supabase/schema.sql` → Run
+3. Fill in `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env`
+4. Enable Email Auth in Authentication → Providers
+5. Sync the profiles (sign-up through the UI or seed)
 
-A camada de dados é isolada em `src/lib/db.ts` (Prisma) e os serializadores em `src/lib/serialize.ts`, então a troca de store não toca nas telas.
+The data layer is isolated in `src/lib/db.ts` (Prisma) and the serializers in `src/lib/serialize.ts`, so swapping the store does not touch the screens.
 
-## Estrutura do projeto
+## Project structure
 
 ```
 src/
 ├─ app/
-│  ├─ page.tsx                 # SPA principal (rota única)
+│  ├─ page.tsx                 # Main SPA (single route)
 │  └─ api/                     # Backend: auth, profile, matches,
 │     │                        # mentorships (respond/sessions/coach/
 │     │                        # prepare/tasks), notifications, admin/stats
 ├─ components/app/             # UI: shell, login, wizard, dashboard,
-│                              # matches, mentoria+coach, painel mentor, admin
+│                              # matches, mentorship+coach, mentor panel, admin
 └─ lib/
-   ├─ ai.ts                    # IA dual-mode (OpenAI ⇄ fallback)
-   ├─ matching.ts              # cosseno + overlap ponderado de skills
-   ├─ plan.ts                  # plano de 4 sessões (IA ⇄ template)
-   ├─ coach-context.ts         # contexto do Coach (nunca genérico)
-   ├─ auth.ts                  # scrypt + cookie httpOnly assinado
+   ├─ ai.ts                    # Dual-mode AI (OpenAI ⇄ fallback)
+   ├─ matching.ts              # cosine + weighted skill overlap
+   ├─ plan.ts                  # 4-session plan (AI ⇄ template)
+   ├─ coach-context.ts         # Coach context (never generic)
+   ├─ auth.ts                  # scrypt + signed httpOnly cookie
    └─ db.ts                    # Prisma client
-prisma/schema.prisma           # modelo de dados (SQLite demo)
-supabase/schema.sql            # schema Postgres + RLS para produção
-scripts/seed.ts                # dados de demonstração
+prisma/schema.prisma           # Data model (SQLite demo)
+supabase/schema.sql            # Postgres schema + RLS for production
+scripts/seed.ts                # Demo data
 ```
 
-## Modelo de dados
+## Data model
 
-`profiles` (skills + embeddings) · `mentorships` (status + plano) · `sessions` (notas + compromissos) · `tasks` (prazo + origem) · `coach_messages` · `session_preps` · `notifications`
+`profiles` (skills + embeddings) · `mentorships` (status + plan) · `sessions` (notes + commitments) · `tasks` (due date + source) · `coach_messages` · `session_preps` · `notifications`
 
-## Notas técnicas
+## Technical notes
 
-- **Matching**: score = `0.55 × overlap_ponderado_de_skills + 0.45 × cosseno_semântico`, exibido em percentual. Com OpenAI, os embeddings são de `text-embedding-3-small`; sem chave, um embedding léxico determinístico (stemming PT-BR + sinônimos) roda localmente.
-- **Coach sem resposta genérica**: cada mensagem injeta objetivo, plano, histórico de sessões, compromissos, tarefas pendentes e últimas conversas no prompt do modelo, e exige que a resposta termine com uma ação concreta.
-- **Segurança**: senhas com scrypt+salt; sessão em cookie httpOnly assinado com HMAC-SHA256 (`AUTH_SECRET`); autorização por participação nas rotas de API.
-- **Responsivo**: mobile-first, navegação inferior compacta no mobile, rodapé sticky.
+- **Matching**: score = `0.55 × weighted_skill_overlap + 0.45 × semantic_cosine`, displayed as a percentage. With OpenAI, embeddings come from `text-embedding-3-small`; without a key, a deterministic lexical embedding (light English stemming + synonyms) runs locally.
+- **Coach never gives a generic answer**: every message injects the goal, plan, session history, commitments, pending tasks and recent chats into the model's prompt, and requires the reply to end with a concrete action.
+- **Security**: passwords with scrypt+salt; session in an httpOnly cookie signed with HMAC-SHA256 (`AUTH_SECRET`); authorization by participation on the API routes. A token mirror is also sent via the `x-session-token` header as a fallback for environments that block third-party cookies (e.g. previews in iframes).
+- **Responsive**: mobile-first, compact bottom navigation on mobile, sticky footer.

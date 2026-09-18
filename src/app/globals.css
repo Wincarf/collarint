@@ -132,7 +132,7 @@
   }
 }
 
-/* ---------- Utilitários da marca JCI Collarint ---------- */
+/* ---------- JCI Collarint brand utilities ---------- */
 
 .brand-gradient {
   background: linear-gradient(135deg, #0a1f44 0%, #16305e 55%, #1f3a68 100%);
@@ -165,7 +165,7 @@
   background: transparent;
 }
 
-/* Animação de entrada dos cards */
+/* Card entrance animation */
 @keyframes rise-in {
   from {
     opacity: 0;

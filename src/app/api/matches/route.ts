@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** Gera as frases explicativas dos matches em uma única chamada de IA (rápido). */
+/** Generates the matches' explanatory sentences in a single AI call (fast). */
 async function generateReasons(
   userName: string,
   mentee: EmbeddableProfile,
@@ -100,13 +100,13 @@ async function generateReasons(
 ): Promise<(string | null)[]> {
   if (matches.length === 0) return [];
   if (aiMode() !== "openai") {
-    return matches.map(() => null); // fallback: template data-driven
+    return matches.map(() => null); // fallback: data-driven template
   }
   try {
     const list = matches
       .map(
         (m, i) =>
-          `${i + 1}. ${m.mentor.name} — ensina: ${m.mentor.teachSkills.map((s) => `${s.name}(${s.level})`).join(", ")}; domina ${m.overlap.matched.length} de ${m.overlap.learnCount} skills buscadas${m.overlap.matched.length ? ` (${m.overlap.matched.join(", ")})` : ""}; afinidade semântica ${Math.round(m.semantic * 100)}%`
+          `${i + 1}. ${m.mentor.name} — teaches: ${m.mentor.teachSkills.map((s) => `${s.name}(${s.level})`).join(", ")}; masters ${m.overlap.matched.length} of ${m.overlap.learnCount} sought skills${m.overlap.matched.length ? ` (${m.overlap.matched.join(", ")})` : ""}; semantic affinity ${Math.round(m.semantic * 100)}%`
       )
       .join("\n");
 
@@ -114,11 +114,11 @@ async function generateReasons(
       {
         role: "system",
         content:
-          'Você é o Coach Collarint, IA da plataforma de mentoria da JCI Brasil. Para cada match mentor, escreva UMA frase em português do Brasil explicando por que ele/ela é um bom match para o mentorado, citando dados concretos (ex: "José domina 3 das 4 habilidades que você busca, especialmente Gestão de Projetos"). Tom: profissional, caloroso, direto. Responda APENAS JSON: {"reasons":["frase 1","frase 2",...]} com o mesmo número de matches da entrada, na mesma ordem.',
+          'You are the Collarint Coach, the AI of the JCI mentoring platform. For each mentor match, write ONE sentence in English explaining why they are a good match for the mentee, citing concrete data (e.g.: "Jose masters 3 of the 4 skills you are looking for, especially Project Management"). Tone: professional, warm, direct. Reply ONLY with JSON: {"reasons":["sentence 1","sentence 2",...]} with the same number of matches as the input, in the same order.',
       },
       {
         role: "user",
-        content: `Mentorado: ${userName}\nObjetivo: ${mentee.mainGoal ?? "(não informado)"}\nQuer aprender: ${mentee.learnSkills.map((s) => s.name).join(", ")}\n\nMatches:\n${list}`,
+        content: `Mentee: ${userName}\nGoal: ${mentee.mainGoal ?? "(not provided)"}\nWants to learn: ${mentee.learnSkills.map((s) => s.name).join(", ")}\n\nMatches:\n${list}`,
       },
     ]);
     if (Array.isArray(result.reasons) && result.reasons.length === matches.length) {
@@ -126,7 +126,7 @@ async function generateReasons(
     }
     return matches.map(() => null);
   } catch (e) {
-    console.error("[matches] razões IA falharam:", e);
+    console.error("[matches] AI reasons failed:", e);
     return matches.map(() => null);
   }
 }

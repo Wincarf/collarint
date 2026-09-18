@@ -1,6 +1,6 @@
 "use client";
 
-// Home do membro: mentorias ativas, próxima sessão, tarefas pendentes e atalhos
+// Member home: active mentorships, next session, pending tasks and shortcuts
 
 import { useEffect, useState } from "react";
 import { api } from "./api-client";
@@ -10,7 +10,7 @@ import { InitialsAvatar, SectionTitle, StatusBadge, EmptyState } from "./ui-bits
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow, format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { CalendarDays, Compass, ListTodo, Route, Sparkles, Users } from "lucide-react";
 
 export function MenteeHome() {
@@ -52,46 +52,46 @@ export function MenteeHome() {
 
   return (
     <div className="space-y-6">
-      {/* Saudação */}
+      {/* Greeting */}
       <div className="brand-gradient relative overflow-hidden rounded-2xl p-6 sm:p-8">
         <div
           className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-20 blur-2xl"
           style={{ background: "#D4A843" }}
           aria-hidden="true"
         />
-        <h1 className="text-2xl font-bold text-white sm:text-3xl">Olá, {firstName}!</h1>
+        <h1 className="text-2xl font-bold text-white sm:text-3xl">Hello, {firstName}!</h1>
         <p className="mt-2 max-w-xl text-sm text-white/80">
           {active.length > 0
-            ? `Você tem ${active.length} mentoria${active.length > 1 ? "s" : ""} ativa${active.length > 1 ? "s" : ""} — continue de onde parou.`
-            : "Seu próximo passo de desenvolvimento começa aqui: encontre um mentor compatível com seus objetivos."}
+            ? `You have ${active.length} active mentorship${active.length > 1 ? "s" : ""} — pick up where you left off.`
+            : "Your next development step starts here: find a mentor aligned with your goals."}
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Button onClick={() => setView({ name: "matches" })} className="gap-2 bg-gold font-semibold text-navy hover:bg-gold/90">
-            <Compass className="h-4 w-4" /> Encontrar mentores
+            <Compass className="h-4 w-4" /> Find mentors
           </Button>
           {mentorPending.length > 0 && (
             <Button onClick={() => setView({ name: "mentor" })} variant="outline" className="gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20">
-              <Users className="h-4 w-4" /> {mentorPending.length} convite{mentorPending.length > 1 ? "s" : ""} de mentoria
+              <Users className="h-4 w-4" /> {mentorPending.length} mentorship invite{mentorPending.length > 1 ? "s" : ""}
             </Button>
           )}
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Mentorias ativas */}
+        {/* Active mentorships */}
         <div className="space-y-6 lg:col-span-2">
           <section>
-            <SectionTitle title="Suas mentorias" subtitle="Como mentorado" />
+            <SectionTitle title="Your mentorships" subtitle="As a mentee" />
             <div className="mt-4 space-y-3">
               {loading && <SkeletonCard />}
               {!loading && active.length === 0 && pending.length === 0 && (
                 <EmptyState
                   icon={<Users className="h-5 w-5" />}
-                  title="Nenhuma mentoria ainda"
-                  description="Use o matching semântico para encontrar os 5 mentores mais compatíveis com o que você quer aprender."
+                  title="No mentorships yet"
+                  description="Use semantic matching to find the 5 mentors most compatible with what you want to learn."
                   action={
                     <Button onClick={() => setView({ name: "matches" })} className="bg-navy hover:bg-navy-light gap-2">
-                      <Compass className="h-4 w-4" /> Ver meus matches
+                      <Compass className="h-4 w-4" /> View my matches
                     </Button>
                   }
                 />
@@ -105,7 +105,7 @@ export function MenteeHome() {
                       <InitialsAvatar name={m.mentor.name} color={m.mentor.avatarColor} />
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-navy">{m.mentor.name}</p>
-                        <p className="text-xs text-muted-foreground">Aguardando resposta do mentor ao seu convite.</p>
+                        <p className="text-xs text-muted-foreground">Waiting for the mentor to respond to your invite.</p>
                       </div>
                       <StatusBadge status={m.status} />
                     </div>
@@ -116,7 +116,7 @@ export function MenteeHome() {
 
           {mentorActive.length + mentorPending.length > 0 && (
             <section>
-              <SectionTitle title="Você como mentor" subtitle="Membros que você orienta" />
+              <SectionTitle title="You as a mentor" subtitle="Members you guide" />
               <div className="mt-4 space-y-3">
                 {mentorActive.map((m) => (
                   <MentorshipRow key={m.id} mentorship={m} onClick={() => setView({ name: "mentorship", id: m.id })} />
@@ -125,10 +125,10 @@ export function MenteeHome() {
                   <Card className="border-gold/40 bg-gold-soft/30">
                     <CardContent className="flex items-center justify-between p-4">
                       <p className="text-sm text-[#7a5c1f]">
-                        {mentorPending.length} convite{mentorPending.length > 1 ? "s" : ""} aguardando sua resposta como mentor.
+                        {mentorPending.length} invite{mentorPending.length > 1 ? "s" : ""} awaiting your response as a mentor.
                       </p>
                       <Button size="sm" onClick={() => setView({ name: "mentor" })} className="gap-1 bg-navy hover:bg-navy-light">
-                        Abrir painel
+                        Open panel
                       </Button>
                     </CardContent>
                   </Card>
@@ -138,25 +138,25 @@ export function MenteeHome() {
           )}
         </div>
 
-        {/* Coluna lateral: próxima sessão + tarefas */}
+        {/* Side column: next session + tasks */}
         <div className="space-y-6">
           <Card className="border-border shadow-sm">
             <CardContent className="p-5">
-              <SectionTitle title="Próxima sessão" />
+              <SectionTitle title="Next session" />
               <div className="mt-4">
                 {nextSession ? (
                   <div className="rounded-lg bg-gold-soft/50 p-4">
                     <div className="flex items-center gap-2 text-[#7a5c1f]">
                       <CalendarDays className="h-4 w-4" />
                       <p className="text-sm font-semibold">
-                        {format(new Date(nextSession.session.scheduledAt!), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                        {format(new Date(nextSession.session.scheduledAt!), "MMMM d 'at' HH:mm", { locale: enUS })}
                       </p>
                     </div>
                     <p className="mt-2 text-sm text-navy">
-                      Com <strong>{nextSession.mentorship.mentor.name.split(" ")[0]}</strong> ·{" "}
+                      With <strong>{nextSession.mentorship.mentor.name.split(" ")[0]}</strong> ·{" "}
                       {nextSession.mentorship.plan?.sessions[
                         Math.min(nextSession.mentorship.sessions.filter((s) => s.completed).length, 3)
-                      ]?.title ?? "Sessão de acompanhamento"}
+                      ]?.title ?? "Follow-up session"}
                     </p>
                     <Button
                       size="sm"
@@ -164,14 +164,14 @@ export function MenteeHome() {
                       className="mt-3 w-full gap-1 border-gold/50 bg-card"
                       onClick={() => setView({ name: "mentorship", id: nextSession.mentorship.id })}
                     >
-                      <Route className="h-4 w-4" /> Abrir mentoria
+                      <Route className="h-4 w-4" /> Open mentorship
                     </Button>
                   </div>
                 ) : (
                   <p className="py-3 text-sm text-muted-foreground">
                     {active.length > 0
-                      ? "Nenhuma sessão agendada — combine a próxima com seu mentor."
-                      : "Elas aparecem aqui quando sua mentoria começar."}
+                      ? "No sessions scheduled — arrange the next one with your mentor."
+                      : "Sessions will appear here once your mentorship starts."}
                   </p>
                 )}
               </div>
@@ -180,11 +180,11 @@ export function MenteeHome() {
 
           <Card className="border-border shadow-sm">
             <CardContent className="p-5">
-              <SectionTitle title="Tarefas pendentes" action={<ListTodo className="h-5 w-5 text-muted-foreground" />} />
+              <SectionTitle title="Pending tasks" action={<ListTodo className="h-5 w-5 text-muted-foreground" />} />
               <div className="mt-4 space-y-2">
                 {pendingTasks.length === 0 ? (
                   <p className="py-2 text-sm text-muted-foreground">
-                    {active.length > 0 ? "Tudo em dia por aqui. Boa!" : "Você ainda não tem mentorias ativas."}
+                    {active.length > 0 ? "You're all caught up here. Nice!" : "You don't have active mentorships yet."}
                   </p>
                 ) : (
                   pendingTasks.slice(0, 5).map(({ task, mentorship }) => (
@@ -196,9 +196,9 @@ export function MenteeHome() {
                       <p className="text-sm font-medium text-navy">{task.title}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {task.dueDate
-                          ? `Prazo ${formatDistanceToNow(new Date(task.dueDate), { locale: ptBR, addSuffix: true })}`
-                          : "Sem prazo"}{" "}
-                        · com {mentorship.mentor.name.split(" ")[0]}
+                          ? `Due ${formatDistanceToNow(new Date(task.dueDate), { locale: enUS, addSuffix: true })}`
+                          : "No due date"}{" "}
+                        · with {mentorship.mentor.name.split(" ")[0]}
                       </p>
                     </button>
                   ))
@@ -212,10 +212,10 @@ export function MenteeHome() {
               <div className="flex items-start gap-3">
                 <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-[#7a5c1f]" />
                 <div>
-                  <p className="text-sm font-semibold text-[#7a5c1f]">Dica do Coach</p>
+                  <p className="text-sm font-semibold text-[#7a5c1f]">Coach Tip</p>
                   <p className="mt-1 text-xs leading-relaxed text-[#7a5c1f]/90">
-                    Mentorias com registro de sessão e tarefas concluídas têm o dobro de progresso. Use o
-                    IA Coach para preparar cada sessão!
+                    Mentorships with logged sessions and completed tasks see twice the progress. Use the
+                    AI Coach to prepare each session!
                   </p>
                 </div>
               </div>
@@ -243,7 +243,7 @@ function MentorshipRow({ mentorship, onClick }: { mentorship: MentorshipDTO; onC
             <StatusBadge status={mentorship.status} />
           </div>
           <p className="text-xs text-muted-foreground">
-            {mentorship.mentor.roleTitle} · {completed}/{total} sessões realizadas
+            {mentorship.mentor.roleTitle} · {completed}/{total} sessions completed
           </p>
         </div>
         <Route className="h-5 w-5 shrink-0 text-muted-foreground" />

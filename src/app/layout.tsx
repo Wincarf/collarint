@@ -14,10 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "JCI Collarint — Plataforma de Mentoria",
+  title: "JCI Collarint — Mentoring Platform",
   description:
-    "Plataforma da JCI que conecta membros por skill matching: mentores experientes ao encontro de quem busca desenvolvimento profissional, com IA Coach entre as sessões.",
-  keywords: ["JCI", "mentoria", "skill matching", "desenvolvimento profissional", "IA"],
+    "JCI platform that connects members through skill matching: experienced mentors meet those seeking professional development, with an AI Coach between sessions.",
+  keywords: ["JCI", "mentoring", "skill matching", "professional development", "AI"],
   authors: [{ name: "JCI Collarint" }],
 };
 
@@ -33,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground min-h-screen flex flex-col`}
       >

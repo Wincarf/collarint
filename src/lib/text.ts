@@ -1,4 +1,4 @@
-// Utilitários de texto compartilhados
+// Shared text utilities
 
 export function stripAccentsSafe(s: string): string {
   try {

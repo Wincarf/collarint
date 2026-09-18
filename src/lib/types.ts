@@ -1,4 +1,4 @@
-// Tipos compartilhados entre servidor e cliente — JCI Collarint
+// Shared types between server and client — JCI Collarint
 
 export type SkillLevel = "iniciante" | "intermediario" | "avancado";
 
@@ -43,7 +43,7 @@ export interface MatchResult {
   avatarColor: string;
   weeklyAvailability: string | null;
   teachSkills: SkillEntry[];
-  commonSkills: string[]; // skills que o usuário busca e o match ensina
+  commonSkills: string[]; // skills the user seeks and the match teaches
   score: number; // 0-100
   reason: string;
 }
@@ -123,7 +123,7 @@ export interface AdminStats {
     skill: string;
     teachCount: number;
     learnCount: number;
-    balance: number; // >0 abunda, <0 rara
+    balance: number; // >0 abundant, <0 scarce
   }>;
   abundantSkills: string[];
   rareSkills: string[];
@@ -131,7 +131,7 @@ export interface AdminStats {
 }
 
 export const LEVEL_LABELS: Record<SkillLevel, string> = {
-  iniciante: "Iniciante",
-  intermediario: "Intermediário",
-  avancado: "Avançado",
+  iniciante: "Beginner",
+  intermediario: "Intermediate",
+  avancado: "Advanced",
 };

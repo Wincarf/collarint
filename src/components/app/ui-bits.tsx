@@ -1,6 +1,6 @@
 "use client";
 
-// Componentes visuais compartilhados da marca JCI Collarint
+// Shared brand visual components for JCI Collarint
 
 import { cn } from "@/lib/utils";
 import { initialsOf } from "@/lib/skills";
@@ -53,7 +53,7 @@ export function InitialsAvatar({
       )}
       style={{ backgroundColor: color ?? "#0A1F44" }}
       role="img"
-      aria-label={`Avatar de ${name}`}
+      aria-label={`Avatar for ${name}`}
     >
       {initialsOf(name)}
     </span>
@@ -122,10 +122,10 @@ export function SimpleSkillChip({ name }: { name: string }) {
 
 export function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
-    active: { label: "Ativa", className: "bg-[#e7f4ec] text-[#1F7A4D] border-transparent" },
-    pending: { label: "Convite pendente", className: "bg-gold-soft text-[#7a5c1f] border-transparent" },
-    declined: { label: "Recusada", className: "bg-[#fdecec] text-[#b4232a] border-transparent" },
-    completed: { label: "Concluída", className: "bg-secondary text-muted-foreground border-transparent" },
+    active: { label: "Active", className: "bg-[#e7f4ec] text-[#1F7A4D] border-transparent" },
+    pending: { label: "Invite pending", className: "bg-gold-soft text-[#7a5c1f] border-transparent" },
+    declined: { label: "Declined", className: "bg-[#fdecec] text-[#b4232a] border-transparent" },
+    completed: { label: "Completed", className: "bg-secondary text-muted-foreground border-transparent" },
   };
   const info = map[status] ?? { label: status, className: "bg-secondary text-muted-foreground border-transparent" };
   return <Badge className={cn("font-medium", info.className)}>{info.label}</Badge>;

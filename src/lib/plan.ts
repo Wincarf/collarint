@@ -1,71 +1,72 @@
-// Geração do plano de mentoria de 4 sessões (IA com fallback determinístico)
+// 4-session mentorship plan generation (AI with deterministic fallback)
 
 import type { MentorshipPlan, PlanSession } from "./types";
 import type { Profile } from "@prisma/client";
 import { chatJSON, aiMode } from "./ai";
 import type { SkillEntry } from "./types";
+import { LEVEL_LABELS } from "./types";
 import { parsePlan } from "./serialize";
 
 function planSystemPrompt(): string {
-  return `Você é o Coach Collarint, IA da plataforma de mentoria da JCI Brasil.
-Sua tarefa é criar um PLANO DE MENTORIA de exatamente 4 sessões para um par mentor/mentorado.
-O plano deve ser específico para o objetivo do mentorado e alavancar as skills do mentor — nada genérico.
+  return `You are the Collarint Coach, the AI of the JCI mentoring platform.
+Your task is to create a MENTORSHIP PLAN with exactly 4 sessions for a mentor/mentee pair.
+The plan must be specific to the mentee's goal and leverage the mentor's skills — nothing generic.
 
-Responda APENAS com JSON válido no formato:
-{"sessions":[{"number":1,"title":"título curto da sessão","objective":"objetivo claro de 1 frase","topics":["tópico 1","tópico 2","tópico 3"]}]}
-Regras: exatamente 4 sessões numeradas de 1 a 4; a Sessão 1 é sempre diagnóstico/alinhamento; a Sessão 4 consolida e deixa um plano de continuidade; os títulos devem ser específicos do contexto (nada como "Sessão 2").`;
+Reply ONLY with valid JSON in the format:
+{"sessions":[{"number":1,"title":"short session title","objective":"clear 1-sentence objective","topics":["topic 1","topic 2","topic 3"]}]}
+Rules: exactly 4 sessions numbered 1 to 4; Session 1 is always diagnosis/alignment; Session 4 consolidates and leaves a continuity plan; titles must be specific to the context (nothing like "Session 2"). Write everything in English.`;
 }
 
 function planUserPrompt(menteeName: string, menteeGoal: string | null, menteeLearn: SkillEntry[], mentorName: string, mentorTeach: SkillEntry[]): string {
-  const fmt = (s: SkillEntry) => `${s.name} (${s.level})`;
-  return `Mentorado: ${menteeName}
-Objetivo principal do mentorado: ${menteeGoal ?? "(não informado)"}
-Habilidades que o mentorado quer desenvolver: ${menteeLearn.map(fmt).join(", ") || "(não informado)"}
+  const fmt = (s: SkillEntry) => `${s.name} (${LEVEL_LABELS[s.level] ?? s.level})`;
+  return `Mentee: ${menteeName}
+Mentee's main goal: ${menteeGoal ?? "(not provided)"}
+Skills the mentee wants to develop: ${menteeLearn.map(fmt).join(", ") || "(not provided)"}
 
 Mentor: ${mentorName}
-Habilidades que o mentor ensina: ${mentorTeach.map(fmt).join(", ") || "(não informado)"}
+Skills the mentor teaches: ${mentorTeach.map(fmt).join(", ") || "(not provided)"}
 
-Crie o plano de 4 sessões.`;
+Create the 4-session plan.`;
 }
 
-/** Plano determinístico de qualidade — usado como fallback quando IA não está disponível. */
+/** High-quality deterministic plan — used as fallback when AI is unavailable. */
 export function buildTemplatePlan(mentee: Profile, mentor: Profile, menteeLearn: SkillEntry[], mentorTeach: SkillEntry[]): MentorshipPlan {
   const first = mentor.name.split(" ")[0];
-  const goal = mentee.mainGoal ?? "desenvolver as habilidades buscadas";
-  const skillA = menteeLearn[0]?.name ?? mentorTeach[0]?.name ?? "o tema central";
+  const goal = mentee.mainGoal ?? "develop the skills being sought";
+  const skillA = menteeLearn[0]?.name ?? mentorTeach[0]?.name ?? "the core topic";
   const skillB = menteeLearn[1]?.name ?? skillA;
   const sessions: PlanSession[] = [
     {
       number: 1,
-      title: "Diagnóstico e alinhamento de expectativas",
-      objective: `Mapear o ponto de partida do desenvolvimento e conectar o objetivo ao contexto real.`,
-      topics: ["Situação atual e desafios", "Prioridades do objetivo", "Expectativas da mentoria"],
+      title: "Diagnosis and expectation alignment",
+      objective: `Map the starting point for development and connect the goal to the real context.`,
+      topics: ["Current situation and challenges", "Goal priorities", "Mentorship expectations"],
     },
     {
       number: 2,
-      title: `Fundamentos práticos de ${skillA}`,
-      objective: `Transferir a experiência de ${first} em ${skillA} com casos reais e frameworks aplicáveis.`,
-      topics: [`${skillA} na prática`, "Casos reais do mentor", "Framework aplicado ao contexto"],
+      title: `Hands-on foundations of ${skillA}`,
+      objective: `Transfer ${first}'s experience in ${skillA} with real cases and applicable frameworks.`,
+      topics: [`${skillA} in practice`, "Real cases from the mentor", "Framework applied to the context"],
     },
     {
       number: 3,
-      title: `Aprofundamento em ${skillB === skillA ? "situações difíceis do dia a dia" : skillB}`,
-      objective: "Trabalhar situações reais trazidas pelo mentorado com feedback direto do mentor.",
-      topics: ["Situações reais do mentorado", "Feedback do mentor", "Ajustes de rota"],
+      title: `Going deeper into ${skillB === skillA ? "challenging day-to-day situations" : skillB}`,
+      objective: "Work through real situations brought by the mentee with direct feedback from the mentor.",
+      topics: ["Real situations from the mentee", "Mentor feedback", "Course corrections"],
     },
     {
       number: 4,
-      title: "Consolidação e plano de continuidade",
-      objective: "Consolidar aprendizados e definir o plano de desenvolvimento pós-mentoria.",
-      topics: ["Revisão do progresso", "Próximos 90 dias", "Compromissos finais"],
+      title: "Consolidation and continuity plan",
+      objective: "Consolidate learnings and define the post-mentorship development plan.",
+      topics: ["Progress review", "The next 90 days", "Final commitments"],
     },
   ];
   return { generatedBy: "template", createdAt: new Date().toISOString(), sessions };
 }
 
 /**
- * Gera o plano com IA; se falhar (sem chave ou erro), usa o template.
- * Nunca lança.
+ * Generates the plan with AI; if it fails (no key or error), uses the template.
+ * Never throws.
  */
 export async function generatePlan(
   mentee: Profile,
@@ -85,14 +86,14 @@ export async function generatePlan(
       if (Array.isArray(raw.sessions) && raw.sessions.length === 4) {
         const sessions = raw.sessions.map((s, i) => ({
           number: i + 1,
-          title: String(s.title ?? `Sessão ${i + 1}`).slice(0, 80),
+          title: String(s.title ?? `Session ${i + 1}`).slice(0, 80),
           objective: String(s.objective ?? "").slice(0, 300),
           topics: Array.isArray(s.topics) ? s.topics.slice(0, 4).map((t) => String(t).slice(0, 80)) : [],
         }));
         return { generatedBy: "ai", createdAt: new Date().toISOString(), sessions };
       }
     } catch (e) {
-      console.error("[plan] IA falhou, usando template:", e);
+      console.error("[plan] AI failed, using template:", e);
     }
   }
   return buildTemplatePlan(mentee, mentor, menteeLearn, mentorTeach);

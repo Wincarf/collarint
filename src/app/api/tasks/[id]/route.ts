@@ -6,7 +6,7 @@ import { taskToDTO } from "@/lib/serialize";
 
 export const dynamic = "force-dynamic";
 
-/** PATCH /api/tasks/[id] — alterna conclusão | DELETE — remove */
+/** PATCH /api/tasks/[id] — toggle completion | DELETE — remove */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireUser(req);
@@ -16,9 +16,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       where: { id },
       include: { mentorship: true },
     });
-    if (!task) return jsonError("Tarefa não encontrada.", 404);
+    if (!task) return jsonError("Task not found.", 404);
     if (task.mentorship.mentorId !== user.id && task.mentorship.menteeId !== user.id) {
-      return jsonError("Sem permissão.", 403);
+      return jsonError("No permission.", 403);
     }
 
     const body = await req.json().catch(() => null);
@@ -45,9 +45,9 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
       where: { id },
       include: { mentorship: true },
     });
-    if (!task) return jsonError("Tarefa não encontrada.", 404);
+    if (!task) return jsonError("Task not found.", 404);
     if (task.mentorship.mentorId !== user.id && task.mentorship.menteeId !== user.id) {
-      return jsonError("Sem permissão.", 403);
+      return jsonError("No permission.", 403);
     }
 
     await db.task.delete({ where: { id } });

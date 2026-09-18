@@ -1,12 +1,13 @@
-// Construtor de contexto do IA Coach — garante que o coach NUNCA responda
-// de forma genérica: injeta objetivo, plano, histórico de sessões e tarefas.
+// AI Coach context builder — ensures the coach NEVER answers generically:
+// injects goal, plan, session history and tasks.
 
 import type { CoachMessage, Mentorship, Profile, Session, Task } from "@prisma/client";
 import { parsePlan, parseSkills } from "./serialize";
+import { LEVEL_LABELS } from "./types";
 
 function fmtDate(d: Date | null): string {
-  if (!d) return "a definir";
-  return d.toLocaleDateString("pt-BR", {
+  if (!d) return "to be scheduled";
+  return d.toLocaleDateString("en-US", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -35,51 +36,51 @@ export function buildCoachContext(b: MentorshipBundle): string {
   const mentorFirst = b.mentor.name.split(" ")[0];
 
   const lines: string[] = [];
-  lines.push(`## CONTEXTO DA MENTORIA`);
-  lines.push(`- Mentorado: ${b.mentee.name} (${b.mentee.roleTitle ?? "membro JCI"})`);
-  lines.push(`- Mentor: ${b.mentor.name} (${b.mentor.roleTitle ?? "membro JCI"})`);
+  lines.push(`## MENTORSHIP CONTEXT`);
+  lines.push(`- Mentee: ${b.mentee.name} (${b.mentee.roleTitle ?? "JCI member"})`);
+  lines.push(`- Mentor: ${b.mentor.name} (${b.mentor.roleTitle ?? "JCI member"})`);
   lines.push(
-    `- Skills que o mentor ensina: ${parseSkills(b.mentor.teachSkills).map((s) => `${s.name} (${s.level})`).join(", ") || "não informado"}`
+    `- Skills the mentor teaches: ${parseSkills(b.mentor.teachSkills).map((s) => `${s.name} (${LEVEL_LABELS[s.level] ?? s.level})`).join(", ") || "not provided"}`
   );
-  lines.push(`- Objetivo principal do mentorado: ${b.mentee.mainGoal ?? "não informado"}`);
+  lines.push(`- Mentee's main goal: ${b.mentee.mainGoal ?? "not provided"}`);
   lines.push(
-    `- Habilidades que o mentorado quer desenvolver: ${parseSkills(b.mentee.learnSkills).map((s) => s.name).join(", ") || "não informado"}`
+    `- Skills the mentee wants to develop: ${parseSkills(b.mentee.learnSkills).map((s) => s.name).join(", ") || "not provided"}`
   );
-  lines.push(`- Disponibilidade semanal do mentorado: ${b.mentee.weeklyAvailability ?? "não informada"}`);
+  lines.push(`- Mentee's weekly availability: ${b.mentee.weeklyAvailability ?? "not provided"}`);
 
   if (plan) {
-    lines.push(`\n## PLANO DE MENTORIA (${plan.sessions.length} sessões)`);
+    lines.push(`\n## MENTORSHIP PLAN (${plan.sessions.length} sessions)`);
     for (const s of plan.sessions) {
-      lines.push(`- Sessão ${s.number} — ${s.title}: ${s.objective} (tópicos: ${s.topics.join("; ")})`);
+      lines.push(`- Session ${s.number} — ${s.title}: ${s.objective} (topics: ${s.topics.join("; ")})`);
     }
   }
 
-  lines.push(`\n## SESSÕES (${completedSessions.length} realizadas)`);
+  lines.push(`\n## SESSIONS (${completedSessions.length} completed)`);
   if (completedSessions.length === 0) {
-    lines.push("- Nenhuma sessão realizada ainda.");
+    lines.push("- No sessions completed yet.");
   }
   for (const s of completedSessions) {
-    lines.push(`- Sessão de ${fmtDate(s.scheduledAt)}:`);
-    if (s.notes) lines.push(`  · O que foi discutido: ${s.notes}`);
-    if (s.commitments) lines.push(`  · Compromissos assumidos: ${s.commitments}`);
+    lines.push(`- Session of ${fmtDate(s.scheduledAt)}:`);
+    if (s.notes) lines.push(`  · What was discussed: ${s.notes}`);
+    if (s.commitments) lines.push(`  · Commitments made: ${s.commitments}`);
   }
   if (nextSession) {
-    lines.push(`- PRÓXIMA SESSÃO agendada: ${fmtDate(nextSession.scheduledAt)}`);
+    lines.push(`- NEXT SESSION scheduled: ${fmtDate(nextSession.scheduledAt)}`);
   }
 
-  lines.push(`\n## TAREFAS`);
-  lines.push(`- Pendentes (${pendingTasks.length}):`);
-  for (const t of pendingTasks) lines.push(`  · ${t.title}${t.dueDate ? ` (prazo: ${fmtDate(t.dueDate)})` : ""}`);
-  if (pendingTasks.length === 0) lines.push("  · nenhuma");
+  lines.push(`\n## TASKS`);
+  lines.push(`- Pending (${pendingTasks.length}):`);
+  for (const t of pendingTasks) lines.push(`  · ${t.title}${t.dueDate ? ` (due: ${fmtDate(t.dueDate)})` : ""}`);
+  if (pendingTasks.length === 0) lines.push("  · none");
   if (doneTasks.length > 0) {
-    lines.push(`- Concluídas (${doneTasks.length}): ${doneTasks.map((t) => t.title).join("; ")}`);
+    lines.push(`- Completed (${doneTasks.length}): ${doneTasks.map((t) => t.title).join("; ")}`);
   }
 
   const recent = [...b.messages]
     .sort((a, c) => a.createdAt.getTime() - c.createdAt.getTime())
     .slice(-8);
   if (recent.length > 0) {
-    lines.push(`\n## ÚLTIMAS MENSAGENS DO COACH (${menteeFirst} ↔ você)`);
+    lines.push(`\n## RECENT COACH MESSAGES (${menteeFirst} ↔ you)`);
     for (const m of recent) {
       const who = m.role === "user" ? menteeFirst : "Coach";
       lines.push(`- ${who}: ${m.content.slice(0, 400)}`);
@@ -87,39 +88,39 @@ export function buildCoachContext(b: MentorshipBundle): string {
   }
 
   lines.push(
-    `\nDiretriz de abertura: cumprimente ${menteeFirst} pelo nome, mostre que você conhece o estado atual da mentoria dele com ${mentorFirst} (cite plano, sessões e tarefas reais) e vá direto ao ponto.`
+    `\nOpening guideline: greet ${menteeFirst} by name, show that you know the current state of their mentorship with ${mentorFirst} (cite the plan, real sessions and tasks) and get straight to the point.`
   );
   return lines.join("\n");
 }
 
-/** Prompt de preparação de sessão (pauta + 5 perguntas). */
+/** Session preparation prompt (agenda + 5 questions). */
 export function buildPrepPrompt(b: MentorshipBundle, nextPlanSession: string | null): string {
   const context = buildCoachContext(b);
   const menteeFirst = b.mentee.name.split(" ")[0];
   const mentorFirst = b.mentor.name.split(" ")[0];
   return `${context}
 
-## TAREFA
-Gere a PREPARAÇÃO DE SESSÃO para ${menteeFirst} levar à próxima sessão com ${mentorFirst}.
-${nextPlanSession ? `A próxima sessão do plano é: "${nextPlanSession}".` : "Baseie-se no estado atual da mentoria."}
+## TASK
+Generate the SESSION PREPARATION for ${menteeFirst} to bring to the next session with ${mentorFirst}.
+${nextPlanSession ? `The next plan session is: "${nextPlanSession}".` : "Base it on the current state of the mentorship."}
 
-Formato exato da resposta (markdown, em português):
+Exact reply format (markdown, in English):
 
-## Pauta da próxima sessão
-1. [item de abertura — 2 a 3 min]
-2. [item central conectado ao plano e às tarefas pendentes]
-3. [item central 2]
-4. [item de fechamento — alinhar compromissos e próximo passo]
+## Next session agenda
+1. [opening item — 2 to 3 min]
+2. [central item connected to the plan and pending tasks]
+3. [central item 2]
+4. [closing item — align commitments and next step]
 
-## 5 perguntas para levar ao mentor
-1. [pergunta específica e aberta]
+## 5 questions to bring to your mentor
+1. [specific, open-ended question]
 2. ...
-5. [pergunta final sobre próximos passos]
+5. [final question about next steps]
 
-## Lembrete
-[1 frase curta de compromisso pendente relevante, se houver]
+## Reminder
+[1 short sentence about a relevant pending commitment, if any]
 
-Regras: as perguntas devem ser específicas do contexto (objetivo, plano, últimas sessões, tarefas pendentes) — proibido pergunta genérica tipo "como posso melhorar?". Máximo de 250 palavras no total.`;
+Rules: the questions must be specific to the context (goal, plan, recent sessions, pending tasks) — generic questions like "how can I improve?" are forbidden. 250 words maximum in total.`;
 }
 
 export function buildTemplatePrep(b: MentorshipBundle, nextPlanSession: string | null): string {
@@ -127,28 +128,28 @@ export function buildTemplatePrep(b: MentorshipBundle, nextPlanSession: string |
   const mentorFirst = b.mentor.name.split(" ")[0];
   const plan = parsePlan(b.mentorship.plan);
   const pending = b.tasks.filter((t) => !t.completed);
-  const goal = b.mentee.mainGoal ?? "seu objetivo de desenvolvimento";
-  const nextTitle = nextPlanSession ?? "o próximo passo do plano";
+  const goal = b.mentee.mainGoal ?? "your development goal";
+  const nextTitle = nextPlanSession ?? "the next step of the plan";
 
   const questions = [
-    `Como essa etapa (${nextTitle}) apareceu na sua própria trajetória, ${mentorFirst}?`,
-    `Quais erros mais comuns você vê quem começa a trabalhar isso cometer — e como evitar?`,
-    `Considerando meu objetivo ("${goal.slice(0, 90)}"), por onde devo começar esta semana?`,
+    `How did this stage (${nextTitle}) show up in your own career, ${mentorFirst}?`,
+    `What are the most common mistakes people make when starting to work on this — and how do I avoid them?`,
+    `Given my goal ("${goal.slice(0, 90)}"), where should I start this week?`,
     pending.length > 0
-      ? `Sobre a tarefa "${pending[0].title}": o que você faria diferente no meu lugar?`
-      : `Como eu sei que estou progredindo de verdade nessa habilidade?`,
-    `O que precisaria ser verdade daqui a 2 sessões para considerarmos essa etapa vencida?`,
+      ? `About the task "${pending[0].title}": what would you do differently in my place?`
+      : `How will I know I am genuinely making progress on this skill?`,
+    `What would need to be true two sessions from now for us to consider this stage conquered?`,
   ];
 
-  return `## Pauta da próxima sessão
-1. Check-in rápido — como foi a semana e o status das tarefas (5 min)
-2. ${nextTitle} — contexto e expectativas (15 min)
-3. Dúvidas trazidas por ${menteeFirst} com base no objetivo de mentoria (20 min)
-4. Fechamento — compromissos da semana e data da próxima (10 min)
+  return `## Next session agenda
+1. Quick check-in — how the week went and task status (5 min)
+2. ${nextTitle} — context and expectations (15 min)
+3. Questions brought by ${menteeFirst} based on the mentoring goal (20 min)
+4. Wrap-up — commitments for the week and next date (10 min)
 
-## 5 perguntas para levar ao mentor
+## 5 questions to bring to your mentor
 ${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}
 
-## Lembrete
-${pending.length > 0 ? `Você tem ${pending.length} tarefa(s) pendente(s): "${pending[0].title}".` : `Todas as tarefas estão em dia — ótimo, ${menteeFirst}!`}`;
+## Reminder
+${pending.length > 0 ? `You have ${pending.length} pending task(s): "${pending[0].title}".` : `All tasks are up to date — great job, ${menteeFirst}!`}`;
 }

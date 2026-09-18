@@ -11,12 +11,12 @@ export async function POST(req: NextRequest) {
     const name = String(body?.name ?? "").trim();
     const password = String(body?.password ?? "");
 
-    if (!email || !email.includes("@")) return jsonError("Informe um email válido.");
-    if (name.length < 2) return jsonError("Informe seu nome completo.");
-    if (password.length < 6) return jsonError("A senha precisa ter no mínimo 6 caracteres.");
+    if (!email || !email.includes("@")) return jsonError("Please enter a valid email.");
+    if (name.length < 2) return jsonError("Please enter your full name.");
+    if (password.length < 6) return jsonError("The password needs at least 6 characters.");
 
     const existing = await db.profile.findUnique({ where: { email } });
-    if (existing) return jsonError("Já existe uma conta com este email. Faça login.", 409);
+    if (existing) return jsonError("There is already an account with this email. Please sign in.", 409);
 
     let hash = 0;
     for (let i = 0; i < email.length; i++) hash = (hash * 31 + email.charCodeAt(i)) >>> 0;
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     });
 
     await setSessionCookie(profile.id);
-    // Token no corpo como fallback para ambientes que bloqueiam cookies (iframe).
+    // Token in the body as a fallback for environments that block cookies (iframe).
     return NextResponse.json({ ok: true, onboarded: false, token: createSessionToken(profile.id) });
   } catch (err) {
     return handleApiError(err);

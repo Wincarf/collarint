@@ -1,6 +1,6 @@
 "use client";
 
-// Cliente HTTP tipado da aplicação
+// Typed HTTP client of the application
 
 import type {
   AdminStats,
@@ -18,7 +18,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      // Fallback de sessão para ambientes que bloqueiam cookies (preview em iframe)
+      // Session fallback for environments that block cookies (preview in an iframe)
       ...(token ? { "x-session-token": token } : {}),
       ...(options?.headers ?? {}),
     },
@@ -26,13 +26,13 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error((data as { error?: string }).error || "Erro de conexão. Tente novamente.");
+    throw new Error((data as { error?: string }).error || "Connection error. Please try again.");
   }
   return data as T;
 }
 
-// Token de sessão: guardado junto do cookie httpOnly para que o login continue
-// funcionando mesmo quando o navegador recusa cookies de terceiros no iframe.
+// Session token: stored alongside the httpOnly cookie so the login keeps working
+// even when the browser refuses third-party cookies.
 const TOKEN_KEY = "jci_session_token";
 
 function readToken(): string | null {
@@ -47,7 +47,7 @@ function saveToken(token: string): void {
   try {
     window.localStorage.setItem(TOKEN_KEY, token);
   } catch {
-    // localStorage indisponível — o cookie segue como mecanismo principal
+    // localStorage unavailable — the cookie remains the primary mechanism
   }
 }
 

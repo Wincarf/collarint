@@ -1,4 +1,4 @@
-// Serializadores Prisma → DTO (parse dos campos JSON armazenados como string)
+// Prisma → DTO serializers (parsing of JSON fields stored as string)
 
 import type { CoachMessage, Mentorship, Notification, Profile, Session, SessionPrep, Task } from "@prisma/client";
 import type {

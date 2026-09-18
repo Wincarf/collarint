@@ -1,6 +1,6 @@
 // JCI Collarint — data model
 // Espelha o schema Supabase (ver supabase/schema.sql). SQLite local para a demo;
-// migração para Postgres/Supabase = preencher .env + rodar supabase/schema.sql.
+// migration to Postgres/Supabase = fill .env and run supabase/schema.sql.
 
 generator client {
   provider = "prisma-client-js"

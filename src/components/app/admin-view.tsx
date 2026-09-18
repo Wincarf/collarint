@@ -1,6 +1,6 @@
 "use client";
 
-// Dashboard administrativo: mapa de calor de skills (oferta × demanda) e métricas do programa
+// Admin dashboard: skills heatmap (supply × demand) and program metrics
 
 import { useEffect, useState } from "react";
 import { api } from "./api-client";
@@ -18,7 +18,7 @@ export function AdminView() {
     api
       .adminStats()
       .then(setStats)
-      .catch((e) => setError(e instanceof Error ? e.message : "Erro ao carregar estatísticas."));
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load statistics."));
   }, []);
 
   if (error) {
@@ -35,38 +35,38 @@ export function AdminView() {
   return (
     <div className="space-y-6">
       <SectionTitle
-        title="Dashboard administrativo"
-        subtitle="Visão do programa de mentoria da organização"
+        title="Admin dashboard"
+        subtitle="Overview of the organization's mentorship program"
         action={
           <Badge variant="outline" className="gap-1 border-gold/40 bg-gold-soft text-[#7a5c1f]">
             <Wand2 className="h-3.5 w-3.5" />
-            IA: {stats.aiMode === "openai" ? "OpenAI (gpt-4o-mini)" : "modo fallback local"}
+            AI: {stats.aiMode === "openai" ? "OpenAI (gpt-4o-mini)" : "local fallback mode"}
           </Badge>
         }
       />
 
-      {/* Métricas */}
+      {/* Metrics */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <MetricCard icon={<Users className="h-4 w-4" />} label="Membros" value={stats.onboardedMembers} hint={`${stats.totalMembers} cadastrados`} />
-        <MetricCard icon={<Award className="h-4 w-4" />} label="Mentorias ativas" value={stats.activeMentorships} hint={`${stats.pendingInvites} convites pendentes`} />
-        <MetricCard icon={<CalendarCheck className="h-4 w-4" />} label="Sessões realizadas" value={stats.completedSessions} hint="registros concluídos" />
-        <MetricCard icon={<Clock className="h-4 w-4" />} label="Horas de mentoria" value={stats.hoursMentored} hint="1 sessão ≈ 1h" />
-        <MetricCard icon={<ListTodo className="h-4 w-4" />} label="Tarefas concluídas" value={stats.completedTasks} hint={`de ${stats.totalTasks} criadas`} />
+        <MetricCard icon={<Users className="h-4 w-4" />} label="Members" value={stats.onboardedMembers} hint={`${stats.totalMembers} registered`} />
+        <MetricCard icon={<Award className="h-4 w-4" />} label="Active mentorships" value={stats.activeMentorships} hint={`${stats.pendingInvites} pending invites`} />
+        <MetricCard icon={<CalendarCheck className="h-4 w-4" />} label="Sessions completed" value={stats.completedSessions} hint="completed logs" />
+        <MetricCard icon={<Clock className="h-4 w-4" />} label="Mentoring hours" value={stats.hoursMentored} hint="1 session ≈ 1h" />
+        <MetricCard icon={<ListTodo className="h-4 w-4" />} label="Tasks completed" value={stats.completedTasks} hint={`of ${stats.totalTasks} created`} />
         <MetricCard
           icon={<TrendingUp className="h-4 w-4" />}
-          label="Taxa de conclusão"
+          label="Completion rate"
           value={stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}
-          hint="das tarefas"
+          hint="of tasks"
           suffix="%"
         />
       </div>
 
-      {/* Mapa de calor de skills */}
+      {/* Skills heatmap */}
       <Card className="border-border shadow-sm">
         <CardContent className="p-5 sm:p-6">
           <SectionTitle
-            title="Mapa de calor de skills"
-            subtitle="Onde a organização tem oferta (ensina) e demanda (quer aprender)"
+            title="Skills heatmap"
+            subtitle="Where the organization has supply (teaches) and demand (wants to learn)"
           />
           <div className="mt-5 space-y-2">
             {stats.heatmap.map((row) => {
@@ -83,36 +83,36 @@ export function AdminView() {
                       <div
                         className="h-full rounded-full transition-all"
                         style={{ width: `${Math.max(row.teachCount * 12, row.teachCount > 0 ? 8 : 0)}%`, backgroundColor: teachColor }}
-                        title={`${row.teachCount} ensinam`}
+                        title={`${row.teachCount} teaching`}
                       />
                     </div>
                     <div className="mt-1 h-3 overflow-hidden rounded-full bg-secondary">
                       <div
                         className="h-full rounded-full bg-navy transition-all"
                         style={{ width: `${Math.max(row.learnCount * 12, row.learnCount > 0 ? 8 : 0)}%`, backgroundColor: learnColor }}
-                        title={`${row.learnCount} querem aprender`}
+                        title={`${row.learnCount} want to learn`}
                       />
                     </div>
                   </div>
                   <div className="w-24 shrink-0 text-right text-xs text-muted-foreground">
-                    <span className="font-semibold text-navy">{row.teachCount}</span> ensinam ·{" "}
-                    <span className="font-semibold text-navy">{row.learnCount}</span> buscam
+                    <span className="font-semibold text-navy">{row.teachCount}</span> teach ·{" "}
+                    <span className="font-semibold text-navy">{row.learnCount}</span> seek
                   </div>
                   <div
                     className="hidden w-28 shrink-0 sm:block"
-                    title={row.balance > 0 ? "Oferta maior que demanda" : "Demanda maior que oferta"}
+                    title={row.balance > 0 ? "Supply exceeds demand" : "Demand exceeds supply"}
                   >
                     {row.balance > 0.15 ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-[#e7f4ec] px-2 py-0.5 text-xs font-medium text-[#1F7A4D]">
-                        <TrendingUp className="h-3 w-3" /> abunda
+                        <TrendingUp className="h-3 w-3" /> abundant
                       </span>
                     ) : row.balance < -0.15 ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-[#fdecec] px-2 py-0.5 text-xs font-medium text-[#b4232a]">
-                        <TrendingDown className="h-3 w-3" /> rara
+                        <TrendingDown className="h-3 w-3" /> scarce
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
-                        equilibrada
+                        balanced
                       </span>
                     )}
                   </div>
@@ -122,10 +122,10 @@ export function AdminView() {
           </div>
           <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-gold" /> linha 1: membros que ensinam
+              <span className="h-2.5 w-2.5 rounded-full bg-gold" /> row 1: members who teach
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-navy" /> linha 2: membros que querem aprender
+              <span className="h-2.5 w-2.5 rounded-full bg-navy" /> row 2: members who want to learn
             </span>
           </div>
         </CardContent>
@@ -136,9 +136,9 @@ export function AdminView() {
         <Card className="border-[#1F7A4D]/30 bg-[#e7f4ec]/40">
           <CardContent className="p-5">
             <h3 className="flex items-center gap-2 text-sm font-bold text-[#1F7A4D]">
-              <Award className="h-4 w-4" /> Skills que abundam
+              <Award className="h-4 w-4" /> Abundant skills
             </h3>
-            <p className="mt-1 text-xs text-[#1F7A4D]/80">Muita oferta de mentores — incentive novos mentorados.</p>
+            <p className="mt-1 text-xs text-[#1F7A4D]/80">Plenty of mentor supply — encourage new mentees.</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {stats.abundantSkills.length > 0 ? (
                 stats.abundantSkills.map((s) => (
@@ -147,7 +147,7 @@ export function AdminView() {
                   </Badge>
                 ))
               ) : (
-                <span className="text-xs text-muted-foreground">Sem dados suficientes ainda.</span>
+                <span className="text-xs text-muted-foreground">Not enough data yet.</span>
               )}
             </div>
           </CardContent>
@@ -155,9 +155,9 @@ export function AdminView() {
         <Card className="border-[#b4232a]/25 bg-[#fdecec]/40">
           <CardContent className="p-5">
             <h3 className="flex items-center gap-2 text-sm font-bold text-[#b4232a]">
-              <AlertTriangle className="h-4 w-4" /> Skills raras (alta demanda)
+              <AlertTriangle className="h-4 w-4" /> Scarce skills (high demand)
             </h3>
-            <p className="mt-1 text-xs text-[#b4232a]/80">Muitos querem aprender, poucos ensinam — recrute mentores nessas áreas.</p>
+            <p className="mt-1 text-xs text-[#b4232a]/80">Many want to learn, few teach — recruit mentors in these areas.</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {stats.rareSkills.length > 0 ? (
                 stats.rareSkills.map((s) => (
@@ -166,7 +166,7 @@ export function AdminView() {
                   </Badge>
                 ))
               ) : (
-                <span className="text-xs text-muted-foreground">Sem dados suficientes ainda.</span>
+                <span className="text-xs text-muted-foreground">Not enough data yet.</span>
               )}
             </div>
           </CardContent>

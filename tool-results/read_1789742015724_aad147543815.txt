@@ -1,0 +1,892 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→// Visão detalhada da mentoria — usada pelo mentorado (com IA Coach) e pelo mentor
+     4→     4→// (agendamento, registro de sessões e visualização da preparação do mentorado).
+     5→     5→
+     6→     6→import { useCallback, useEffect, useRef, useState } from "react";
+     7→     7→import { api } from "./api-client";
+     8→     8→import type { MentorshipDTO, SessionDTO, TaskDTO } from "@/lib/types";
+     9→     9→import { InitialsAvatar, SkillChip, StatusBadge, SectionTitle } from "./ui-bits";
+    10→    10→import { Button } from "@/components/ui/button";
+    11→    11→import { Card, CardContent } from "@/components/ui/card";
+    12→    12→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+    13→    13→import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+    14→    14→import { Calendar } from "@/components/ui/calendar";
+    15→    15→import { Checkbox } from "@/components/ui/checkbox";
+    16→    16→import { Input } from "@/components/ui/input";
+    17→    17→import { Label } from "@/components/ui/label";
+    18→    18→import { Textarea } from "@/components/ui/textarea";
+    19→    19→import ReactMarkdown from "react-markdown";
+    20→    20→import { format } from "date-fns";
+    21→    21→import { ptBR } from "date-fns/locale";
+    22→    22→import {
+    23→    23→  ArrowLeft,
+    24→    24→  CalendarPlus,
+    25→    25→  ClipboardList,
+    26→    26→  Copy,
+    27→    27→  Check,
+    28→    28→  CheckCircle2,
+    29→    29→  Circle,
+    30→    30→  Loader2,
+    31→    31→  MessageSquare,
+    32→    32→  Plus,
+    33→    33→  Route,
+    34→    34→  Send,
+    35→    35→  Sparkles,
+    36→    36→  Users,
+    37→    37→} from "lucide-react";
+    38→    38→import { useToast } from "@/hooks/use-toast";
+    39→    39→import { cn } from "@/lib/utils";
+    40→    40→import { useApp } from "./store";
+    41→    41→
+    42→    42→interface CoachMsg {
+    43→    43→  id: string;
+    44→    44→  role: "user" | "assistant";
+    45→    45→  content: string;
+    46→    46→  createdAt: string;
+    47→    47→}
+    48→    48→
+    49→    49→export function MentorshipView({ id, onBack }: { id: string; onBack: () => void }) {
+    50→    50→  const [mentorship, setMentorship] = useState<MentorshipDTO | null>(null);
+    51→    51→  const [loading, setLoading] = useState(true);
+    52→    52→  const [error, setError] = useState<string | null>(null);
+    53→    53→  const [scheduleOpen, setScheduleOpen] = useState(false);
+    54→    54→  const [prepDialog, setPrepDialog] = useState<{ content: string } | null>(null);
+    55→    55→
+    56→    56→  const { toast } = useToast();
+    57→    57→  const me = useApp((s) => s.user);
+    58→    58→  // O papel (mentor/mentee) é derivado dos dados da mentoria após o carregamento
+    59→    59→  const role: "mentee" | "mentor" =
+    60→    60→    mentorship && me && mentorship.mentor.id === me.id ? "mentor" : "mentee";
+    61→    61→
+    62→    62→  const load = useCallback(async () => {
+    63→    63→    try {
+    64→    64→      const data = await api.mentorship(id);
+    65→    65→      setMentorship(data.mentorship);
+    66→    66→      setError(null);
+    67→    67→    } catch (e) {
+    68→    68→      setError(e instanceof Error ? e.message : "Erro ao carregar mentoria.");
+    69→    69→    } finally {
+    70→    70→      setLoading(false);
+    71→    71→    }
+    72→    72→  }, [id]);
+    73→    73→
+    74→    74→  useEffect(() => {
+    75→    75→    load();
+    76→    76→  }, [load]);
+    77→    77→
+    78→    78→  if (loading) {
+    79→    79→    return (
+    80→    80→      <div className="flex justify-center py-16">
+    81→    81→        <span className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-gold" />
+    82→    82→      </div>
+    83→    83→    );
+    84→    84→  }
+    85→    85→
+    86→    86→  if (error || !mentorship) {
+    87→    87→    return (
+    88→    88→      <div className="py-16 text-center text-sm text-muted-foreground">
+    89→    89→        {error ?? "Mentoria não encontrada."}
+    90→    90→        <div className="mt-4">
+    91→    91→          <Button variant="outline" onClick={onBack} className="gap-2">
+    92→    92→            <ArrowLeft className="h-4 w-4" /> Voltar
+    93→    93→          </Button>
+    94→    94→        </div>
+    95→    95→      </div>
+    96→    96→    );
+    97→    97→  }
+    98→    98→
+    99→    99→  const other = role === "mentee" ? mentorship.mentor : mentorship.mentee;
+   100→   100→  const isInvitePending = mentorship.status === "pending";
+   101→   101→
+   102→   102→  return (
+   103→   103→    <div className="space-y-6">
+   104→   104→      <Button variant="ghost" onClick={onBack} className="gap-2 -ml-2 text-muted-foreground">
+   105→   105→        <ArrowLeft className="h-4 w-4" /> Voltar
+   106→   106→      </Button>
+   107→   107→
+   108→   108→      {/* Cabeçalho do par */}
+   109→   109→      <Card className="border-border shadow-sm">
+   110→   110→        <CardContent className="p-5 sm:p-6">
+   111→   111→          <div className="flex flex-wrap items-start gap-4">
+   112→   112→            <InitialsAvatar name={other.name} color={other.avatarColor} size="lg" />
+   113→   113→            <div className="min-w-0 flex-1">
+   114→   114→              <div className="flex flex-wrap items-center gap-2">
+   115→   115→                <h1 className="text-xl font-bold text-navy">{other.name}</h1>
+   116→   116→                <StatusBadge status={mentorship.status} />
+   117→   117→              </div>
+   118→   118→              <p className="text-sm text-muted-foreground">
+   119→   119→                {other.roleTitle}
+   120→   120→                {other.city ? ` · ${other.city}` : ""}
+   121→   121→                {role === "mentee" ? " · Seu mentor" : " · Seu mentorado"}
+   122→   122→              </p>
+   123→   123→              <div className="mt-3 flex flex-wrap gap-1.5">
+   124→   124→                {other.teachSkills.slice(0, 4).map((s) => (
+   125→   125→                  <SkillChip key={s.name} skill={s} showLevel={false} variant="gold" />
+   126→   126→                ))}
+   127→   127→              </div>
+   128→   128→            </div>
+   129→   129→            {role === "mentor" && mentorship.status === "active" && (
+   130→   130→              <div className="flex gap-2">
+   131→   131→                <Button onClick={() => setScheduleOpen(true)} className="bg-navy hover:bg-navy-light gap-2">
+   132→   132→                  <CalendarPlus className="h-4 w-4" /> Agendar sessão
+   133→   133→                </Button>
+   134→   134→              </div>
+   135→   135→            )}
+   136→   136→          </div>
+   137→   137→          {isInvitePending && (
+   138→   138→            <div className="mt-4 rounded-lg bg-gold-soft/60 p-4">
+   139→   139→              <p className="text-sm font-medium text-[#7a5c1f]">Mensagem de convite:</p>
+   140→   140→              <p className="mt-1 text-sm text-[#7a5c1f]/90">&ldquo;{mentorship.inviteMessage}&rdquo;</p>
+   141→   141→            </div>
+   142→   142→          )}
+   143→   143→        </CardContent>
+   144→   144→      </Card>
+   145→   145→
+   146→   146→      {mentorship.status === "active" && (
+   147→   147→        <div className="grid gap-6 lg:grid-cols-5">
+   148→   148→          {/* Coluna esquerda: plano + sessões */}
+   149→   149→          <div className="space-y-6 lg:col-span-3">
+   150→   150→            <PlanTrail plan={mentorship.plan} sessions={mentorship.sessions} />
+   151→   151→            <SessionsSection mentorship={mentorship} role={role} onChanged={load} />
+   152→   152→            {role === "mentor" && <MenteePrepSection mentorshipId={mentorship.id} onOpen={setPrepDialog} />}
+   153→   153→          </div>
+   154→   154→
+   155→   155→          {/* Coluna direita: coach (mentee) ou tarefas (ambos) */}
+   156→   156→          <div className="space-y-6 lg:col-span-2">
+   157→   157→            {role === "mentee" ? (
+   158→   158→              <CoachChat
+   159→   159→                mentorshipId={mentorship.id}
+   160→   160→                mentorName={mentorship.mentor.name.split(" ")[0]}
+   161→   161→                planReady={!!mentorship.plan}
+   162→   162→                onTaskCreated={load}
+   163→   163→              />
+   164→   164→            ) : (
+   165→   165→              <TasksCard mentorshipId={mentorship.id} tasks={mentorship.tasks} editable={false} onChanged={load} />
+   166→   166→            )}
+   167→   167→            {role === "mentee" && (
+   168→   168→              <TasksCard mentorshipId={mentorship.id} tasks={mentorship.tasks} editable onChanged={load} />
+   169→   169→            )}
+   170→   170→          </div>
+   171→   171→        </div>
+   172→   172→      )}
+   173→   173→
+   174→   174→      {mentorship.status === "declined" && (
+   175→   175→        <Card className="border-border">
+   176→   176→          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+   177→   177→            Esta proposta de mentoria não foi aceita. Explore outros matches na plataforma — há novos
+   178→   178→            mentores chegando sempre.
+   179→   179→          </CardContent>
+   180→   180→        </Card>
+   181→   181→      )}
+   182→   182→
+   183→   183→      <ScheduleDialog
+   184→   184→        open={scheduleOpen}
+   185→   185→        onOpenChange={setScheduleOpen}
+   186→   186→        mentorshipId={mentorship.id}
+   187→   187→        onDone={load}
+   188→   188→      />
+   189→   189→
+   190→   190→      <Dialog open={!!prepDialog} onOpenChange={(open) => !open && setPrepDialog(null)}>
+   191→   191→        <DialogContent className="max-h-[80vh] overflow-y-auto scroll-slim sm:max-w-lg">
+   192→   192→          <DialogHeader>
+   193→   193→            <DialogTitle className="text-navy">Preparação do mentorado para a próxima sessão</DialogTitle>
+   194→   194→          </DialogHeader>
+   195→   195→          <div className="prose-sm text-sm">
+   196→   196→            <MarkdownContent content={prepDialog?.content ?? ""} />
+   197→   197→          </div>
+   198→   198→        </DialogContent>
+   199→   199→      </Dialog>
+   200→   200→    </div>
+   201→   201→  );
+   202→   202→}
+   203→   203→
+   204→   204→/* ---------------- Plano de mentoria (trilha visual) ---------------- */
+   205→   205→
+   206→   206→function PlanTrail({ plan, sessions }: { plan: MentorshipDTO["plan"]; sessions: SessionDTO[] }) {
+   207→   207→  if (!plan) return null;
+   208→   208→  const completed = sessions.filter((s) => s.completed).length;
+   209→   209→
+   210→   210→  return (
+   211→   211→    <Card className="border-border shadow-sm">
+   212→   212→      <CardContent className="p-5 sm:p-6">
+   213→   213→        <SectionTitle
+   214→   214→          title="Plano de mentoria"
+   215→   215→          subtitle={
+   216→   216→            plan.generatedBy === "ai"
+   217→   217→              ? "Trilha gerada por IA a partir do seu objetivo"
+   218→   218→              : "Trilha estruturada em 4 sessões"
+   219→   219→          }
+   220→   220→          action={
+   221→   221→            <span className="rounded-full bg-gold-soft px-3 py-1 text-xs font-semibold text-[#7a5c1f]">
+   222→   222→              {completed}/{plan.sessions.length} sessões
+   223→   223→            </span>
+   224→   224→          }
+   225→   225→        />
+   226→   226→        <ol className="mt-5 space-y-0">
+   227→   227→          {plan.sessions.map((s, i) => {
+   228→   228→            const done = i < completed;
+   229→   229→            const current = i === completed;
+   230→   230→            return (
+   231→   231→              <li key={s.number} className="relative flex gap-4 pb-6 last:pb-0">
+   232→   232→                {i < plan.sessions.length - 1 && (
+   233→   233→                  <span
+   234→   234→                    className={cn("absolute left-[15px] top-8 h-full w-0.5", done ? "bg-gold" : "bg-border")}
+   235→   235→                    aria-hidden="true"
+   236→   236→                  />
+   237→   237→                )}
+   238→   238→                <span
+   239→   239→                  className={cn(
+   240→   240→                    "relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold",
+   241→   241→                    done
+   242→   242→                      ? "border-gold bg-gold text-navy"
+   243→   243→                      : current
+   244→   244→                        ? "border-gold bg-card text-[#7a5c1f]"
+   245→   245→                        : "border-border bg-card text-muted-foreground"
+   246→   246→                  )}
+   247→   247→                >
+   248→   248→                  {done ? <Check className="h-4 w-4" /> : s.number}
+   249→   249→                </span>
+   250→   250→                <div className="min-w-0 pt-1">
+   251→   251→                  <p className={cn("font-semibold", done || current ? "text-navy" : "text-muted-foreground")}>
+   252→   252→                    {s.title}
+   253→   253→                  </p>
+   254→   254→                  <p className="mt-0.5 text-sm text-muted-foreground">{s.objective}</p>
+   255→   255→                  {s.topics.length > 0 && (
+   256→   256→                    <div className="mt-2 flex flex-wrap gap-1.5">
+   257→   257→                      {s.topics.map((t) => (
+   258→   258→                        <span key={t} className="rounded-md bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+   259→   259→                          {t}
+   260→   260→                        </span>
+   261→   261→                      ))}
+   262→   262→                    </div>
+   263→   263→                  )}
+   264→   264→                </div>
+   265→   265→              </li>
+   266→   266→            );
+   267→   267→          })}
+   268→   268→        </ol>
+   269→   269→      </CardContent>
+   270→   270→    </Card>
+   271→   271→  );
+   272→   272→}
+   273→   273→
+   274→   274→/* ---------------- Sessões ---------------- */
+   275→   275→
+   276→   276→function SessionsSection({
+   277→   277→  mentorship,
+   278→   278→  role,
+   279→   279→  onChanged,
+   280→   280→}: {
+   281→   281→  mentorship: MentorshipDTO;
+   282→   282→  role: "mentee" | "mentor";
+   283→   283→  onChanged: () => void;
+   284→   284→}) {
+   285→   285→  const [recording, setRecording] = useState<SessionDTO | null>(null);
+   286→   286→  const [notes, setNotes] = useState("");
+   287→   287→  const [commitments, setCommitments] = useState("");
+   288→   288→  const [saving, setSaving] = useState(false);
+   289→   289→  const { toast } = useToast();
+   290→   290→
+   291→   291→  const upcoming = mentorship.sessions.filter((s) => !s.completed);
+   292→   292→  const past = mentorship.sessions.filter((s) => s.completed);
+   293→   293→
+   294→   294→  async function saveRecord(complete: boolean) {
+   295→   295→    if (!recording) return;
+   296→   296→    if (complete && notes.trim().length === 0) {
+   297→   297→      toast({ title: "Descreva o que foi discutido", variant: "destructive" });
+   298→   298→      return;
+   299→   299→    }
+   300→   300→    setSaving(true);
+   301→   301→    try {
+   302→   302→      await api.recordSession(mentorship.id, recording.id, notes.trim(), commitments.trim(), complete);
+   303→   303→      toast({ title: complete ? "Sessão registrada!" : "Registro salvo." });
+   304→   304→      setRecording(null);
+   305→   305→      setNotes("");
+   306→   306→      setCommitments("");
+   307→   307→      onChanged();
+   308→   308→    } catch (e) {
+   309→   309→      toast({ title: "Erro ao registrar", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+   310→   310→    } finally {
+   311→   311→      setSaving(false);
+   312→   312→    }
+   313→   313→  }
+   314→   314→
+   315→   315→  return (
+   316→   316→    <Card className="border-border shadow-sm">
+   317→   317→      <CardContent className="p-5 sm:p-6">
+   318→   318→        <SectionTitle title="Sessões" subtitle="Agendamentos, registros e compromissos" />
+   319→   319→        <div className="mt-4 space-y-3">
+   320→   320→          {upcoming.length === 0 && past.length === 0 && (
+   321→   321→            <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+   322→   322→              Nenhuma sessão ainda.
+   323→   323→              {role === "mentor" ? " Agende a primeira sessão." : " Seu mentor vai agendar a primeira sessão."}
+   324→   324→            </p>
+   325→   325→          )}
+   326→   326→
+   327→   327→          {upcoming.map((s) => (
+   328→   328→            <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gold/40 bg-gold-soft/40 p-4">
+   329→   329→              <div className="flex items-center gap-3">
+   330→   330→                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gold text-navy">
+   331→   331→                  <CalendarPlus className="h-4 w-4" />
+   332→   332→                </span>
+   333→   333→                <div>
+   334→   334→                  <p className="text-sm font-semibold text-navy">
+   335→   335→                    {s.scheduledAt
+   336→   336→                      ? format(new Date(s.scheduledAt), "EEEE, d 'de' MMMM 'às' HH:mm", { locale: ptBR })
+   337→   337→                      : "Data a definir"}
+   338→   338→                  </p>
+   339→   339→                  <p className="text-xs text-muted-foreground">Próxima sessão agendada</p>
+   340→   340→                </div>
+   341→   341→              </div>
+   342→   342→              {role === "mentor" && (
+   343→   343→                <Button
+   344→   344→                  size="sm"
+   345→   345→                  variant="outline"
+   346→   346→                  onClick={() => {
+   347→   347→                    setRecording(s);
+   348→   348→                    setNotes("");
+   349→   349→                    setCommitments("");
+   350→   350→                  }}
+   351→   351→                  className="gap-1 border-gold/50"
+   352→   352→                >
+   353→   353→                  <ClipboardList className="h-4 w-4" /> Registrar sessão
+   354→   354→                </Button>
+   355→   355→              )}
+   356→   356→            </div>
+   357→   357→          ))}
+   358→   358→
+   359→   359→          {[...past].reverse().map((s) => (
+   360→   360→            <div key={s.id} className="rounded-lg border border-border bg-card p-4">
+   361→   361→              <div className="flex flex-wrap items-center justify-between gap-2">
+   362→   362→                <p className="text-sm font-semibold text-navy">
+   363→   363→                  {s.scheduledAt
+   364→   364→                    ? format(new Date(s.scheduledAt), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })
+   365→   365→                    : "Sessão"}
+   366→   366→                </p>
+   367→   367→                {role === "mentor" && (
+   368→   368→                  <Button
+   369→   369→                    size="sm"
+   370→   370→                    variant="ghost"
+   371→   371→                    className="h-7 gap-1 text-xs text-muted-foreground"
+   372→   372→                    onClick={() => {
+   373→   373→                      setRecording(s);
+   374→   374→                      setNotes(s.notes ?? "");
+   375→   375→                      setCommitments(s.commitments ?? "");
+   376→   376→                    }}
+   377→   377→                  >
+   378→   378→                    Editar registro
+   379→   379→                  </Button>
+   380→   380→                )}
+   381→   381→              </div>
+   382→   382→              {s.notes && (
+   383→   383→                <div className="mt-2 text-sm">
+   384→   384→                  <span className="font-medium text-navy">O que foi discutido: </span>
+   385→   385→                  <span className="text-muted-foreground">{s.notes}</span>
+   386→   386→                </div>
+   387→   387→              )}
+   388→   388→              {s.commitments && (
+   389→   389→                <div className="mt-1.5 text-sm">
+   390→   390→                  <span className="font-medium text-navy">Compromissos assumidos: </span>
+   391→   391→                  <span className="text-muted-foreground">{s.commitments}</span>
+   392→   392→                </div>
+   393→   393→              )}
+   394→   394→              {!s.notes && !s.commitments && <p className="mt-1 text-xs text-muted-foreground">Sem registro detalhado.</p>}
+   395→   395→            </div>
+   396→   396→          ))}
+   397→   397→        </div>
+   398→   398→      </CardContent>
+   399→   399→
+   400→   400→      <Dialog open={!!recording} onOpenChange={(open) => !open && setRecording(null)}>
+   401→   401→        <DialogContent className="sm:max-w-lg">
+   402→   402→          <DialogHeader>
+   403→   403→            <DialogTitle className="text-navy">Registro da sessão</DialogTitle>
+   404→   404→          </DialogHeader>
+   405→   405→          <div className="space-y-4">
+   406→   406→            <div className="space-y-2">
+   407→   407→              <Label htmlFor="sess-notes">O que foi discutido</Label>
+   408→   408→              <Textarea
+   409→   409→                id="sess-notes"
+   410→   410→                rows={4}
+   411→   411→                placeholder="Ex.: Mapeamos o funil de vendas e identificamos que o diagnóstico do decisor é o ponto fraco..."
+   412→   412→                value={notes}
+   413→   413→                onChange={(e) => setNotes(e.target.value)}
+   414→   414→              />
+   415→   415→            </div>
+   416→   416→            <div className="space-y-2">
+   417→   417→              <Label htmlFor="sess-commit">Compromissos assumidos</Label>
+   418→   418→              <Textarea
+   419→   419→                id="sess-commit"
+   420→   420→                rows={3}
+   421→   421→                placeholder="Ex.: Mentorado vai mapear os 3 decisores; mentor vai enviar o template de research."
+   422→   422→                value={commitments}
+   423→   423→                onChange={(e) => setCommitments(e.target.value)}
+   424→   424→              />
+   425→   425→            </div>
+   426→   426→          </div>
+   427→   427→          <DialogFooter className="gap-2 sm:gap-0">
+   428→   428→            <Button variant="outline" onClick={() => saveRecord(false)} disabled={saving}>
+   429→   429→              Salvar rascunho
+   430→   430→            </Button>
+   431→   431→            <Button
+   432→   432→              onClick={() => saveRecord(true)}
+   433→   433→              disabled={saving}
+   434→   434→              className="bg-navy hover:bg-navy-light gap-2"
+   435→   435→            >
+   436→   436→              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+   437→   437→              Concluir sessão
+   438→   438→            </Button>
+   439→   439→          </DialogFooter>
+   440→   440→        </DialogContent>
+   441→   441→      </Dialog>
+   442→   442→    </Card>
+   443→   443→  );
+   444→   444→}
+   445→   445→
+   446→   446→/* ---------------- Tarefas ---------------- */
+   447→   447→
+   448→   448→function TasksCard({
+   449→   449→  mentorshipId,
+   450→   450→  tasks,
+   451→   451→  editable,
+   452→   452→  onChanged,
+   453→   453→}: {
+   454→   454→  mentorshipId: string;
+   455→   455→  tasks: TaskDTO[];
+   456→   456→  editable: boolean;
+   457→   457→  onChanged: () => void;
+   458→   458→}) {
+   459→   459→  const [newTitle, setNewTitle] = useState("");
+   460→   460→  const [adding, setAdding] = useState(false);
+   461→   461→  const { toast } = useToast();
+   462→   462→
+   463→   463→  const pending = tasks.filter((t) => !t.completed);
+   464→   464→  const done = tasks.filter((t) => t.completed);
+   465→   465→
+   466→   466→  async function toggle(task: TaskDTO) {
+   467→   467→    try {
+   468→   468→      await api.toggleTask(task.id, !task.completed);
+   469→   469→      onChanged();
+   470→   470→    } catch (e) {
+   471→   471→      toast({ title: "Erro", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+   472→   472→    }
+   473→   473→  }
+   474→   474→
+   475→   475→  async function add() {
+   476→   476→    if (newTitle.trim().length < 3) return;
+   477→   477→    setAdding(true);
+   478→   478→    try {
+   479→   479→      await api.createTask(mentorshipId, newTitle.trim());
+   480→   480→      setNewTitle("");
+   481→   481→      onChanged();
+   482→   482→    } catch (e) {
+   483→   483→      toast({ title: "Erro", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+   484→   484→    } finally {
+   485→   485→      setAdding(false);
+   486→   486→    }
+   487→   487→  }
+   488→   488→
+   489→   489→  return (
+   490→   490→    <Card className="border-border shadow-sm">
+   491→   491→      <CardContent className="p-5">
+   492→   492→        <SectionTitle title="Tarefas" subtitle={editable ? "Criadas por você e pelo Coach" : "Acompanhamento do mentorado"} />
+   493→   493→        <div className="mt-4 space-y-2">
+   494→   494→          {tasks.length === 0 && (
+   495→   495→            <p className="py-4 text-center text-sm text-muted-foreground">
+   496→   496→              Nenhuma tarefa ainda. {editable ? "O Coach cria tarefas no chat — ou adicione a primeira." : ""}
+   497→   497→            </p>
+   498→   498→          )}
+   499→   499→          {pending.map((t) => (
+   500→   500→            <TaskRow key={t.id} task={t} onToggle={toggle} />
+   501→   501→          ))}
+   502→   502→          {done.map((t) => (
+   503→   503→            <TaskRow key={t.id} task={t} onToggle={toggle} />
+   504→   504→          ))}
+   505→   505→        </div>
+   506→   506→        {editable && (
+   507→   507→          <div className="mt-4 flex gap-2">
+   508→   508→            <Input
+   509→   509→              placeholder="Nova tarefa..."
+   510→   510→              value={newTitle}
+   511→   511→              onChange={(e) => setNewTitle(e.target.value)}
+   512→   512→              onKeyDown={(e) => e.key === "Enter" && add()}
+   513→   513→            />
+   514→   514→            <Button size="icon" variant="outline" onClick={add} disabled={adding} aria-label="Adicionar tarefa">
+   515→   515→              <Plus className="h-4 w-4" />
+   516→   516→            </Button>
+   517→   517→          </div>
+   518→   518→        )}
+   519→   519→      </CardContent>
+   520→   520→    </Card>
+   521→   521→  );
+   522→   522→}
+   523→   523→
+   524→   524→function TaskRow({ task, onToggle }: { task: TaskDTO; onToggle: (task: TaskDTO) => void }) {
+   525→   525→  const overdue = task.dueDate && !task.completed && new Date(task.dueDate) < new Date();
+   526→   526→  return (
+   527→   527→    <label
+   528→   528→      className={cn(
+   529→   529→        "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
+   530→   530→        task.completed ? "border-transparent bg-secondary/60" : "border-border bg-card hover:border-gold/40"
+   531→   531→      )}
+   532→   532→    >
+   533→   533→      <Checkbox
+   534→   534→        checked={task.completed}
+   535→   535→        onCheckedChange={() => onToggle(task)}
+   536→   536→        className="mt-0.5"
+   537→   537→        aria-label={task.title}
+   538→   538→      />
+   539→   539→      <div className="min-w-0">
+   540→   540→        <p className={cn("text-sm", task.completed ? "text-muted-foreground line-through" : "text-navy font-medium")}>
+   541→   541→          {task.title}
+   542→   542→        </p>
+   543→   543→        {task.dueDate && (
+   544→   544→          <p className={cn("mt-0.5 text-xs", overdue ? "font-medium text-destructive" : "text-muted-foreground")}>
+   545→   545→            Prazo: {format(new Date(task.dueDate), "d 'de' MMM", { locale: ptBR })}
+   546→   546→            {task.source === "coach" && !task.completed ? " · criada pelo Coach" : ""}
+   547→   547→          </p>
+   548→   548→        )}
+   549→   549→      </div>
+   550→   550→    </label>
+   551→   551→  );
+   552→   552→}
+   553→   553→
+   554→   554→/* ---------------- IA Coach (chat + preparar sessão) ---------------- */
+   555→   555→
+   556→   556→function CoachChat({
+   557→   557→  mentorshipId,
+   558→   558→  mentorName,
+   559→   559→  planReady,
+   560→   560→  onTaskCreated,
+   561→   561→}: {
+   562→   562→  mentorshipId: string;
+   563→   563→  mentorName: string;
+   564→   564→  planReady: boolean;
+   565→   565→  onTaskCreated: () => void;
+   566→   566→}) {
+   567→   567→  const [messages, setMessages] = useState<CoachMsg[]>([]);
+   568→   568→  const [loaded, setLoaded] = useState(false);
+   569→   569→  const [input, setInput] = useState("");
+   570→   570→  const [sending, setSending] = useState(false);
+   571→   571→  const [preparing, setPreparing] = useState(false);
+   572→   572→  const [prepResult, setPrepResult] = useState<{ content: string } | null>(null);
+   573→   573→  const [copied, setCopied] = useState(false);
+   574→   574→  const scrollRef = useRef<HTMLDivElement>(null);
+   575→   575→  const { toast } = useToast();
+   576→   576→
+   577→   577→  useEffect(() => {
+   578→   578→    api
+   579→   579→      .coachHistory(mentorshipId)
+   580→   580→      .then((data) => setMessages(data.messages))
+   581→   581→      .catch(() => undefined)
+   582→   582→      .finally(() => setLoaded(true));
+   583→   583→  }, [mentorshipId]);
+   584→   584→
+   585→   585→  useEffect(() => {
+   586→   586→    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+   587→   587→  }, [messages, sending]);
+   588→   588→
+   589→   589→  async function send() {
+   590→   590→    const text = input.trim();
+   591→   591→    if (!text || sending) return;
+   592→   592→    setInput("");
+   593→   593→    setSending(true);
+   594→   594→    const optimistic: CoachMsg = {
+   595→   595→      id: `tmp-${Date.now()}`,
+   596→   596→      role: "user",
+   597→   597→      content: text,
+   598→   598→      createdAt: new Date().toISOString(),
+   599→   599→    };
+   600→   600→    setMessages((m) => [...m, optimistic]);
+   601→   601→    try {
+   602→   602→      const res = await api.coachSend(mentorshipId, text);
+   603→   603→      setMessages((m) => [...m.filter((x) => x.id !== optimistic.id), res.userMessage, res.assistantMessage]);
+   604→   604→      if (res.createdTasks.length > 0) {
+   605→   605→        toast({
+   606→   606→          title: "Tarefa criada pelo Coach",
+   607→   607→          description: res.createdTasks.map((t) => t.title).join(" · "),
+   608→   608→        });
+   609→   609→        onTaskCreated();
+   610→   610→      }
+   611→   611→    } catch (e) {
+   612→   612→      setMessages((m) => m.filter((x) => x.id !== optimistic.id));
+   613→   613→      toast({ title: "Falha ao enviar", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+   614→   614→    } finally {
+   615→   615→      setSending(false);
+   616→   616→    }
+   617→   617→  }
+   618→   618→
+   619→   619→  async function prepareSession() {
+   620→   620→    setPreparing(true);
+   621→   621→    try {
+   622→   622→      const res = await api.prepare(mentorshipId);
+   623→   623→      setPrepResult(res.prep);
+   624→   624→      toast({ title: "Preparação pronta!", description: "Copie a pauta e leve para a sessão." });
+   625→   625→      onTaskCreated();
+   626→   626→    } catch (e) {
+   627→   627→      toast({ title: "Erro ao preparar", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+   628→   628→    } finally {
+   629→   629→      setPreparing(false);
+   630→   630→    }
+   631→   631→  }
+   632→   632→
+   633→   633→  async function copyPrep() {
+   634→   634→    const content = prepResult?.content;
+   635→   635→    if (!content) return;
+   636→   636→    try {
+   637→   637→      await navigator.clipboard.writeText(content);
+   638→   638→      setCopied(true);
+   639→   639→      setTimeout(() => setCopied(false), 2000);
+   640→   640→    } catch {
+   641→   641→      toast({ title: "Não foi possível copiar automaticamente", description: "Selecione o texto e copie manualmente." });
+   642→   642→    }
+   643→   643→  }
+   644→   644→
+   645→   645→  return (
+   646→   646→    <Card className="flex h-[640px] flex-col border-border shadow-sm">
+   647→   647→      <div className="border-b border-border p-4">
+   648→   648→        <div className="flex items-center gap-2">
+   649→   649→          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-navy text-gold">
+   650→   650→            <Sparkles className="h-4 w-4" />
+   651→   651→          </span>
+   652→   652→          <div className="min-w-0 flex-1">
+   653→   653→            <p className="text-sm font-bold text-navy">IA Coach</p>
+   654→   654→            <p className="text-xs text-muted-foreground">Apoio entre sessões · sempre com o contexto da sua mentoria</p>
+   655→   655→          </div>
+   656→   656→        </div>
+   657→   657→        <Button
+   658→   658→          size="sm"
+   659→   659→          onClick={prepareSession}
+   660→   660→          disabled={preparing || !planReady}
+   661→   661→          className="mt-3 w-full gap-2 bg-gold font-semibold text-navy hover:bg-gold/90"
+   662→   662→        >
+   663→   663→          {preparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+   664→   664→          Preparar próxima sessão
+   665→   665→        </Button>
+   666→   666→      </div>
+   667→   667→
+   668→   668→      <div ref={scrollRef} className="scroll-slim flex-1 space-y-3 overflow-y-auto p-4">
+   669→   669→        {!loaded && (
+   670→   670→          <div className="flex justify-center py-8">
+   671→   671→            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+   672→   672→          </div>
+   673→   673→        )}
+   674→   674→        {loaded && messages.length === 0 && (
+   675→   675→          <div className="rounded-lg bg-secondary p-4 text-sm text-muted-foreground">
+   676→   676→            Olá! Eu sou seu Coach Collarint. Conheço seu objetivo, seu plano com {mentorName} e suas tarefas.
+   677→   677→            Me pergunte o que precisar — por exemplo: <em>&ldquo;como devo me preparar para a próxima sessão?&rdquo;</em>
+   678→   678→          </div>
+   679→   679→        )}
+   680→   680→        {messages.map((m) => (
+   681→   681→          <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+   682→   682→            <div
+   683→   683→              className={cn(
+   684→   684→                "max-w-[92%] rounded-2xl px-3.5 py-2.5 text-sm",
+   685→   685→                m.role === "user"
+   686→   686→                  ? "rounded-br-md bg-navy text-white"
+   687→   687→                  : "rounded-bl-md border border-border bg-card text-foreground"
+   688→   688→              )}
+   689→   689→            >
+   690→   690→              {m.role === "assistant" ? (
+   691→   691→                <MarkdownContent content={m.content} />
+   692→   692→              ) : (
+   693→   693→                <p className="whitespace-pre-wrap">{m.content}</p>
+   694→   694→              )}
+   695→   695→            </div>
+   696→   696→          </div>
+   697→   697→        ))}
+   698→   698→        {sending && (
+   699→   699→          <div className="flex justify-start">
+   700→   700→            <div className="rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3">
+   701→   701→              <span className="flex gap-1">
+   702→   702→                <span className="typing-dot h-2 w-2 rounded-full bg-muted-foreground" />
+   703→   703→                <span className="typing-dot h-2 w-2 rounded-full bg-muted-foreground" />
+   704→   704→                <span className="typing-dot h-2 w-2 rounded-full bg-muted-foreground" />
+   705→   705→              </span>
+   706→   706→            </div>
+   707→   707→          </div>
+   708→   708→        )}
+   709→   709→      </div>
+   710→   710→
+   711→   711→      <div className="border-t border-border p-3">
+   712→   712→        <form
+   713→   713→          className="flex gap-2"
+   714→   714→          onSubmit={(e) => {
+   715→   715→            e.preventDefault();
+   716→   716→            send();
+   717→   717→          }}
+   718→   718→        >
+   719→   719→          <Input
+   720→   720→            placeholder="Escreva para o Coach..."
+   721→   721→            value={input}
+   722→   722→            onChange={(e) => setInput(e.target.value)}
+   723→   723→            disabled={sending}
+   724→   724→          />
+   725→   725→          <Button type="submit" size="icon" className="shrink-0 bg-navy hover:bg-navy-light" disabled={sending || !input.trim()} aria-label="Enviar mensagem">
+   726→   726→            <Send className="h-4 w-4" />
+   727→   727→          </Button>
+   728→   728→        </form>
+   729→   729→      </div>
+   730→   730→
+   731→   731→      <Dialog open={!!prepResult} onOpenChange={(open) => !open && setPrepResult(null)}>
+   732→   732→        <DialogContent className="max-h-[80vh] sm:max-w-lg">
+   733→   733→          <DialogHeader>
+   734→   734→            <DialogTitle className="text-navy">Sua preparação para a próxima sessão</DialogTitle>
+   735→   735→          </DialogHeader>
+   736→   736→          <div className="scroll-slim max-h-[50vh] overflow-y-auto pr-2 text-sm">
+   737→   737→            <MarkdownContent content={prepResult?.content ?? ""} />
+   738→   738→          </div>
+   739→   739→          <DialogFooter>
+   740→   740→            <Button onClick={copyPrep} className="gap-2 bg-navy hover:bg-navy-light">
+   741→   741→              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+   742→   742→              {copied ? "Copiado!" : "Copiar para área de transferência"}
+   743→   743→            </Button>
+   744→   744→          </DialogFooter>
+   745→   745→        </DialogContent>
+   746→   746→      </Dialog>
+   747→   747→    </Card>
+   748→   748→  );
+   749→   749→}
+   750→   750→
+   751→   751→function MenteePrepSection({
+   752→   752→  mentorshipId,
+   753→   753→  onOpen,
+   754→   754→}: {
+   755→   755→  mentorshipId: string;
+   756→   756→  onOpen: (prep: { content: string }) => void;
+   757→   757→}) {
+   758→   758→  const [prep, setPrep] = useState<{ content: string; createdAt: string } | null>(null);
+   759→   759→  const [loading, setLoading] = useState(true);
+   760→   760→
+   761→   761→  useEffect(() => {
+   762→   762→    api
+   763→   763→      .mentorship(mentorshipId)
+   764→   764→      .then((d) => setPrep(d.mentorship.latestPrep))
+   765→   765→      .catch(() => undefined)
+   766→   766→      .finally(() => setLoading(false));
+   767→   767→  }, [mentorshipId]);
+   768→   768→
+   769→   769→  return (
+   770→   770→    <Card className="border-border shadow-sm">
+   771→   771→      <CardContent className="p-5 sm:p-6">
+   772→   772→        <SectionTitle
+   773→   773→          title="Preparação do mentorado"
+   774→   774→          subtitle="Pauta e perguntas geradas pelo IA Coach antes da sessão"
+   775→   775→        />
+   776→   776→        <div className="mt-4">
+   777→   777→          {loading && <p className="text-sm text-muted-foreground">Carregando...</p>}
+   778→   778→          {!loading && !prep && (
+   779→   779→            <p className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
+   780→   780→              O mentorado ainda não gerou a preparação da próxima sessão.
+   781→   781→            </p>
+   782→   782→          )}
+   783→   783→          {!loading && prep && (
+   784→   784→            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gold/40 bg-gold-soft/40 p-4">
+   785→   785→              <div className="flex items-center gap-3">
+   786→   786→                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gold text-navy">
+   787→   787→                  <Route className="h-4 w-4" />
+   788→   788→                </span>
+   789→   789→                <div>
+   790→   790→                  <p className="text-sm font-semibold text-navy">Pauta + 5 perguntas prontas</p>
+   791→   791→                  <p className="text-xs text-muted-foreground">
+   792→   792→                    Gerada em{" "}
+   793→   793→                    {format(new Date(prep.createdAt), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+   794→   794→                  </p>
+   795→   795→                </div>
+   796→   796→              </div>
+   797→   797→              <Button size="sm" variant="outline" className="gap-1 border-gold/50" onClick={() => onOpen(prep)}>
+   798→   798→                <MessageSquare className="h-4 w-4" /> Ver preparação
+   799→   799→              </Button>
+   800→   800→            </div>
+   801→   801→          )}
+   802→   802→        </div>
+   803→   803→      </CardContent>
+   804→   804→    </Card>
+   805→   805→  );
+   806→   806→}
+   807→   807→
+   808→   808→/* ---------------- Agendamento (mentor) ---------------- */
+   809→   809→
+   810→   810→function ScheduleDialog({
+   811→   811→  open,
+   812→   812→  onOpenChange,
+   813→   813→  mentorshipId,
+   814→   814→  onDone,
+   815→   815→}: {
+   816→   816→  open: boolean;
+   817→   817→  onOpenChange: (open: boolean) => void;
+   818→   818→  mentorshipId: string;
+   819→   819→  onDone: () => void;
+   820→   820→}) {
+   821→   821→  const [date, setDate] = useState<Date | undefined>(new Date());
+   822→   822→  const [time, setTime] = useState("19:00");
+   823→   823→  const [saving, setSaving] = useState(false);
+   824→   824→  const { toast } = useToast();
+   825→   825→
+   826→   826→  async function confirm() {
+   827→   827→    if (!date) return;
+   828→   828→    const [h, m] = time.split(":").map(Number);
+   829→   829→    const d = new Date(date);
+   830→   830→    d.setHours(h, m, 0, 0);
+   831→   831→    setSaving(true);
+   832→   832→    try {
+   833→   833→      await api.scheduleSession(mentorshipId, d.toISOString());
+   834→   834→      toast({ title: "Sessão agendada!", description: format(d, "d 'de' MMMM 'às' HH:mm", { locale: ptBR }) });
+   835→   835→      onOpenChange(false);
+   836→   836→      onDone();
+   837→   837→    } catch (e) {
+   838→   838→      toast({ title: "Erro ao agendar", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+   839→   839→    } finally {
+   840→   840→      setSaving(false);
+   841→   841→    }
+   842→   842→  }
+   843→   843→
+   844→   844→  return (
+   845→   845→    <Dialog open={open} onOpenChange={onOpenChange}>
+   846→   846→      <DialogContent className="sm:max-w-md">
+   847→   847→        <DialogHeader>
+   848→   848→          <DialogTitle className="text-navy">Agendar próxima sessão</DialogTitle>
+   849→   849→        </DialogHeader>
+   850→   850→        <div className="space-y-4">
+   851→   851→          <div className="flex justify-center rounded-lg border border-border p-2">
+   852→   852→            <Calendar mode="single" selected={date} onSelect={setDate} locale={ptBR} disabled={{ before: new Date() }} />
+   853→   853→          </div>
+   854→   854→          <div className="space-y-2">
+   855→   855→            <Label htmlFor="sess-time">Hora</Label>
+   856→   856→            <Input id="sess-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+   857→   857→          </div>
+   858→   858→        </div>
+   859→   859→        <DialogFooter>
+   860→   860→          <Button onClick={confirm} disabled={saving || !date} className="w-full gap-2 bg-navy hover:bg-navy-light">
+   861→   861→            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarPlus className="h-4 w-4" />}
+   862→   862→            Confirmar agendamento
+   863→   863→          </Button>
+   864→   864→        </DialogFooter>
+   865→   865→      </DialogContent>
+   866→   866→    </Dialog>
+   867→   867→  );
+   868→   868→}
+   869→   869→
+   870→   870→/* ---------------- Markdown leve ---------------- */
+   871→   871→
+   872→   872→function MarkdownContent({ content }: { content: string }) {
+   873→   873→  return (
+   874→   874→    <ReactMarkdown
+   875→   875→      components={{
+   876→   876→        p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+   877→   877→        strong: ({ children }) => <strong className="font-semibold text-navy">{children}</strong>,
+   878→   878→        em: ({ children }) => <em>{children}</em>,
+   879→   879→        ul: ({ children }) => <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0">{children}</ul>,
+   880→   880→        ol: ({ children }) => <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0">{children}</ol>,
+   881→   881→        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+   882→   882→        h1: ({ children }) => <h3 className="mb-1 text-sm font-bold text-navy">{children}</h3>,
+   883→   883→        h2: ({ children }) => <h3 className="mb-1 text-sm font-bold text-navy">{children}</h3>,
+   884→   884→        h3: ({ children }) => <h4 className="mb-1 text-sm font-semibold text-navy">{children}</h4>,
+   885→   885→        code: ({ children }) => <code className="rounded bg-secondary px-1 py-0.5 text-xs">{children}</code>,
+   886→   886→      }}
+   887→   887→    >
+   888→   888→      {content}
+   889→   889→    </ReactMarkdown>
+   890→   890→  );
+   891→   891→}
+   892→   892→

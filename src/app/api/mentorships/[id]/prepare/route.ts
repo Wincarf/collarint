@@ -12,8 +12,8 @@ export const maxDuration = 90;
 
 /**
  * POST /api/mentorships/[id]/prepare
- * Gera a pauta estruturada + 5 perguntas para a próxima sessão do mentorado.
- * Persistida em session_preps para o mentor poder visualizar.
+ * Generates the structured agenda + 5 questions for the mentee's next session.
+ * Persisted in session_preps so the mentor can view it.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -24,11 +24,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       where: { id },
       include: { mentor: true, mentee: true },
     });
-    if (!mentorship) return jsonError("Mentoria não encontrada.", 404);
+    if (!mentorship) return jsonError("Mentorship not found.", 404);
     if (mentorship.menteeId !== user.id) {
-      return jsonError("Apenas o mentorado gera a preparação da sessão.", 403);
+      return jsonError("Only the mentee generates the session preparation.", 403);
     }
-    if (mentorship.status !== "active") return jsonError("Mentoria não está ativa.");
+    if (mentorship.status !== "active") return jsonError("Mentorship is not active.");
 
     const [sessions, tasks, messages] = await Promise.all([
       db.session.findMany({ where: { mentorshipId: id } }),
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       db.coachMessage.findMany({ where: { mentorshipId: id }, orderBy: { createdAt: "asc" } }),
     ]);
 
-    // próxima sessão do plano = primeira não concluída
+    // next plan session = first not completed
     const plan = parsePlan(mentorship.plan);
     const completedCount = sessions.filter((s) => s.completed).length;
     const nextPlanSession = plan?.sessions[completedCount]?.title ?? null;
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           {
             role: "system",
             content:
-              "Você é o Coach Collarint, IA da plataforma de mentoria da JCI Brasil. Gere a preparação de sessão pedida, exatamente no formato solicitado, em português do Brasil, usando o contexto real da mentoria.",
+              "You are the Collarint Coach, the AI of the JCI mentoring platform. Generate the requested session preparation, exactly in the requested format, in English, using the real mentorship context.",
           },
           { role: "user", content: buildPrepPrompt(bundle, nextPlanSession) },
         ]);
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           {
             role: "system",
             content:
-              "Você é o Coach Collarint, IA da plataforma de mentoria da JCI Brasil. Gere a preparação de sessão pedida, exatamente no formato solicitado, em português do Brasil, usando o contexto real da mentoria.",
+              "You are the Collarint Coach, the AI of the JCI mentoring platform. Generate the requested session preparation, exactly in the requested format, in English, using the real mentorship context.",
           },
           { role: "user", content: buildPrepPrompt(bundle, nextPlanSession) },
         ]);
@@ -90,8 +90,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       data: {
         userId: mentorship.mentorId,
         type: "prep_generated",
-        title: `${firstName(mentorship.mentee.name)} preparou a próxima sessão`,
-        body: "Confira a pauta e as perguntas que ele/ela vai levar à sessão.",
+        title: `${firstName(mentorship.mentee.name)} prepared the next session`,
+        body: "Check the agenda and questions they will bring to the session.",
         payload: JSON.stringify({ mentorshipId: id }),
       },
     });

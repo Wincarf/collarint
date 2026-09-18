@@ -1,7 +1,7 @@
 "use client";
 
-// Shell da SPA: carrega sessão, decide a view (login / onboarding / app),
-// renderiza navegação superior com sino de notificações e rodapé sticky.
+// SPA shell: loads the session, decides the view (login / onboarding / app),
+// renders the top navigation with the notifications bell and sticky footer.
 
 import { useCallback, useEffect, useState } from "react";
 import { useApp, type View } from "./store";
@@ -30,7 +30,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { Bell, Compass, LayoutDashboard, LogOut, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NotificationDTO } from "@/lib/types";
@@ -66,7 +66,7 @@ export function AppRoot() {
     try {
       if (!n.read) await api.markNotifications(n.id);
     } catch {
-      // ignora falha de marcação
+      // ignore marking failure
     }
     setNotifOpen(false);
     refreshNotifications();
@@ -84,7 +84,7 @@ export function AppRoot() {
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <span className="h-10 w-10 animate-spin rounded-full border-4 border-muted border-t-gold" />
-          <p className="text-sm text-muted-foreground">Carregando Collarint...</p>
+          <p className="text-sm text-muted-foreground">Loading Collarint...</p>
         </div>
       </div>
     );
@@ -99,9 +99,9 @@ export function AppRoot() {
   }
 
   const navItems: Array<{ view: View; label: string; icon: React.ReactNode }> = [
-    { view: { name: "home" }, label: "Início", icon: <Compass className="h-4 w-4" /> },
+    { view: { name: "home" }, label: "Home", icon: <Compass className="h-4 w-4" /> },
     { view: { name: "matches" }, label: "Matches", icon: <Sparkles className="h-4 w-4" /> },
-    { view: { name: "mentor" }, label: "Painel do mentor", icon: <Users className="h-4 w-4" /> },
+    { view: { name: "mentor" }, label: "Mentor panel", icon: <Users className="h-4 w-4" /> },
   ];
   if (user.isAdmin) {
     navItems.push({
@@ -126,12 +126,12 @@ export function AppRoot() {
           <button
             onClick={() => setView({ name: "home" })}
             className="flex items-center"
-            aria-label="Ir para o início"
+            aria-label="Go to home"
           >
             <BrandLogo dark compact />
           </button>
 
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Navegação principal">
+          <nav className="hidden items-center gap-1 md:flex" aria-label="Main navigation">
             {navItems.map((item) => (
               <button
                 key={item.label}
@@ -148,7 +148,7 @@ export function AppRoot() {
           </nav>
 
           <div className="flex items-center gap-2">
-            {/* Sino de notificações */}
+            {/* Notifications bell */}
             <button
               onClick={() => {
                 setNotifOpen(true);
@@ -157,7 +157,7 @@ export function AppRoot() {
                 }
               }}
               className="relative flex h-10 w-10 items-center justify-center rounded-full text-white/85 transition-colors hover:bg-white/10 hover:text-white"
-              aria-label={`Notificações (${unread} não lidas)`}
+              aria-label={`Notifications (${unread} unread)`}
             >
               <Bell className="h-5 w-5" />
               {unread > 0 && (
@@ -167,7 +167,7 @@ export function AppRoot() {
               )}
             </button>
 
-            {/* Menu do usuário */}
+            {/* User menu */}
             <DropdownMenu>
               <DropdownMenuTrigger className="rounded-full outline-none ring-gold focus-visible:ring-2">
                 <InitialsAvatar name={user.name} color={user.avatarColor} size="sm" />
@@ -180,7 +180,7 @@ export function AppRoot() {
                 <DropdownMenuSeparator />
                 {user.isAdmin && (
                   <DropdownMenuItem onClick={() => setView({ name: "admin" })} className="gap-2">
-                    <ShieldCheck className="h-4 w-4" /> Dashboard admin
+                    <ShieldCheck className="h-4 w-4" /> Admin dashboard
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
@@ -191,17 +191,17 @@ export function AppRoot() {
                   }}
                   className="gap-2 text-destructive focus:text-destructive"
                 >
-                  <LogOut className="h-4 w-4" /> Sair
+                  <LogOut className="h-4 w-4" /> Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
 
-        {/* Navegação mobile */}
+        {/* Mobile navigation */}
         <nav
           className="flex overflow-x-auto border-t border-white/10 px-2 pb-2 pt-1 md:hidden"
-          aria-label="Navegação principal mobile"
+          aria-label="Mobile main navigation"
         >
           {navItems.map((item) => (
             <button
@@ -235,22 +235,22 @@ export function AppRoot() {
       <footer className="mt-auto border-t border-border bg-card">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5 sm:px-6">
           <p className="text-xs text-muted-foreground">
-            JCI Collarint · Plataforma de mentoria por skill matching · Junior Chamber International
+            JCI Collarint · Skill-based mentoring platform · Junior Chamber International
           </p>
-          <p className="text-xs text-muted-foreground">MVP de demonstração</p>
+          <p className="text-xs text-muted-foreground">Demo MVP</p>
         </div>
       </footer>
 
-      {/* Diálogo de notificações */}
+      {/* Notifications dialog */}
       <Dialog open={notifOpen} onOpenChange={setNotifOpen}>
         <DialogContent className="max-h-[75vh] overflow-y-auto scroll-slim sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-navy">Notificações</DialogTitle>
-            <DialogDescription>Acontecimentos recentes nas suas mentorias</DialogDescription>
+            <DialogTitle className="text-navy">Notifications</DialogTitle>
+            <DialogDescription>Recent activity in your mentorships</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             {notifications.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma notificação ainda.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">No notifications yet.</p>
             ) : (
               notifications.map((n) => (
                 <button
@@ -266,7 +266,7 @@ export function AppRoot() {
                   </p>
                   {n.body && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{n.body}</p>}
                   <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                    {formatDistanceToNow(new Date(n.createdAt), { locale: ptBR, addSuffix: true })}
+                    {formatDistanceToNow(new Date(n.createdAt), { locale: enUS, addSuffix: true })}
                   </p>
                 </button>
               ))

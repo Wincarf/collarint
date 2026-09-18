@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * POST /api/mentorships/[id]/sessions
- * { action: "schedule", date: ISO } — agenda próxima sessão (mentor)
- * { action: "record", sessionId, notes, commitments } — registra sessão
- * { action: "complete", sessionId } — marca como realizada
+ * { action: "schedule", date: ISO } — schedules the next session (mentor)
+ * { action: "record", sessionId, notes, commitments } — logs a session
+ * { action: "complete", sessionId } — marks as completed
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -24,17 +24,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       where: { id },
       include: { mentor: true, mentee: true },
     });
-    if (!mentorship) return jsonError("Mentoria não encontrada.", 404);
+    if (!mentorship) return jsonError("Mentorship not found.", 404);
     const isMentor = mentorship.mentorId === user.id;
     const isMentee = mentorship.menteeId === user.id;
-    if (!isMentor && !isMentee) return jsonError("Sem permissão.", 403);
-    if (mentorship.status !== "active") return jsonError("Mentoria não está ativa.");
+    if (!isMentor && !isMentee) return jsonError("No permission.", 403);
+    if (mentorship.status !== "active") return jsonError("Mentorship is not active.");
 
     if (action === "schedule") {
-      if (!isMentor) return jsonError("Apenas o mentor agenda as sessões.", 403);
+      if (!isMentor) return jsonError("Only the mentor schedules the sessions.", 403);
       const dateStr = String(body?.date ?? "");
       const date = new Date(dateStr);
-      if (!dateStr || isNaN(date.getTime())) return jsonError("Informe data e hora válidas.");
+      if (!dateStr || isNaN(date.getTime())) return jsonError("Enter a valid date and time.");
 
       const session = await db.session.create({
         data: { mentorshipId: id, scheduledAt: date },
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         data: {
           userId: mentorship.menteeId,
           type: "session_scheduled",
-          title: `Próxima sessão com ${firstName(mentorship.mentor.name)} agendada`,
+          title: `Next session with ${firstName(mentorship.mentor.name)} scheduled`,
           body: date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }),
           payload: JSON.stringify({ mentorshipId: id }),
         },
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (action === "record" || action === "complete") {
       const sessionId = String(body?.sessionId ?? "");
       const session = await db.session.findUnique({ where: { id: sessionId } });
-      if (!session || session.mentorshipId !== id) return jsonError("Sessão não encontrada.", 404);
+      if (!session || session.mentorshipId !== id) return jsonError("Session not found.", 404);
 
       const notes = String(body?.notes ?? "").trim().slice(0, 3000);
       const commitments = String(body?.commitments ?? "").trim().slice(0, 3000);
@@ -75,8 +75,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           data: {
             userId: isMentor ? mentorship.menteeId : mentorship.mentorId,
             type: "session_recorded",
-            title: `Sessão de ${firstName(isMentor ? mentorship.mentor.name : mentorship.mentee.name)} registrada`,
-            body: notes ? notes.slice(0, 140) : "Registro de sessão atualizado.",
+            title: `Session of ${firstName(isMentor ? mentorship.mentor.name : mentorship.mentee.name)} logged`,
+            body: notes ? notes.slice(0, 140) : "Session record updated.",
             payload: JSON.stringify({ mentorshipId: id }),
           },
         });
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ ok: true, session: sessionToDTO(updated) });
     }
 
-    return jsonError("Ação inválida. Use 'schedule', 'record' ou 'complete'.");
+    return jsonError("Invalid action. Use 'schedule', 'record' or 'complete'.");
   } catch (err) {
     return handleApiError(err);
   }

@@ -1,12 +1,13 @@
-// Motor de matching semântico — JCI Collarint
+// Semantic matching engine — JCI Collarint
 //
-// Score final = blend de duas evidências:
-//   1. Similaridade de cosseno entre o embedding de "quero aprender" (mentee)
-//      e o embedding de "posso ensinar" (mentor)
-//   2. Overlap ponderado de skills por nome (nível do mentor pesa mais)
-// A frase explicativa usa IA quando disponível; senão, template data-driven.
+// Final score = blend of two pieces of evidence:
+//   1. Cosine similarity between the "want to learn" embedding (mentee)
+//      and the "can teach" embedding (mentor)
+//   2. Weighted skill overlap by name (mentor's level weighs more)
+// The explanatory sentence uses AI when available; otherwise a data-driven template.
 
 import type { EmbeddingPayload, SkillEntry } from "./types";
+import { LEVEL_LABELS } from "./types";
 import { cosineSimilarity, localEmbedding } from "./ai";
 import { stripAccentsSafe } from "./text";
 
@@ -22,17 +23,17 @@ export interface EmbeddableProfile {
 
 export function teachTextOf(p: EmbeddableProfile): string {
   return (
-    "Posso ensinar: " +
-    p.teachSkills.map((s) => `${s.name} (nível ${s.level})`).join(", ") +
-    (p.mainGoal ? `. Contexto: ${p.mainGoal}` : "")
+    "Skills I can teach: " +
+    p.teachSkills.map((s) => `${s.name} (${LEVEL_LABELS[s.level] ?? s.level} level)`).join(", ") +
+    (p.mainGoal ? `. Context: ${p.mainGoal}` : "")
   );
 }
 
 export function learnTextOf(p: EmbeddableProfile): string {
   return (
-    "Quero aprender: " +
-    p.learnSkills.map((s) => `${s.name} (nível ${s.level})`).join(", ") +
-    (p.mainGoal ? `. Meu objetivo: ${p.mainGoal}` : "")
+    "Skills I want to learn: " +
+    p.learnSkills.map((s) => `${s.name} (${LEVEL_LABELS[s.level] ?? s.level} level)`).join(", ") +
+    (p.mainGoal ? `. My goal: ${p.mainGoal}` : "")
   );
 }
 
@@ -44,7 +45,7 @@ function tokenSet(s: string): Set<string> {
   return new Set(normName(s).split(" ").filter((t) => t.length > 1));
 }
 
-/** Verifica se duas skills são "a mesma" (igualdade normalizada ou contenção de tokens). */
+/** Checks whether two skills are "the same" (normalized equality or token containment). */
 export function skillsMatch(a: string, b: string): boolean {
   const na = normName(a);
   const nb = normName(b);
@@ -70,7 +71,7 @@ export interface SkillOverlapResult {
   learnCount: number;
 }
 
-/** Overlap ponderado: fração das skills buscadas que o mentor domina, ponderada pelo nível. */
+/** Weighted overlap: fraction of the sought skills the mentor masters, weighted by level. */
 export function skillOverlap(learn: SkillEntry[], teach: SkillEntry[]): SkillOverlapResult {
   if (learn.length === 0) return { ratio: 0, matched: [], top: null, learnCount: 0 };
   let weightSum = 0;
@@ -98,7 +99,7 @@ function getVector(p: EmbeddableProfile, kind: "teach" | "learn"): EmbeddingPayl
   return kind === "teach" ? p.teachEmbedding : p.learnEmbedding;
 }
 
-/** Cosseno tolerante a modos diferentes de embedding (recalcula lexical se necessário). */
+/** Cosine tolerant to different embedding modes (recomputes lexically if needed). */
 export function semanticScore(mentee: EmbeddableProfile, mentor: EmbeddableProfile): number {
   const a = getVector(mentee, "learn");
   const b = getVector(mentor, "teach");
@@ -125,7 +126,7 @@ export function scoreMatch(mentee: EmbeddableProfile, mentor: EmbeddableProfile)
   return { mentor, score, overlap, semantic, learnCount: mentee.learnSkills.length };
 }
 
-/** Frase explicativa sem IA — data-driven, com os números reais do match. */
+/** Explanatory sentence without AI — data-driven, with the match's real numbers. */
 export function fallbackReason(m: ScoredMatch): string {
   const first = m.mentor.name.split(" ")[0];
   const { matched, top, learnCount } = m.overlap;
@@ -133,11 +134,11 @@ export function fallbackReason(m: ScoredMatch): string {
     const skills =
       matched.length === 1
         ? matched[0]
-        : matched.slice(0, -1).join(", ") + " e " + matched[matched.length - 1];
-    return `${first} domina ${matched.length} de ${learnCount} habilidades que você busca — ${skills}. Destaque para ${top ?? matched[0]}, onde a experiência do mentor é mais profunda.`;
+        : matched.slice(0, -1).join(", ") + " and " + matched[matched.length - 1];
+    return `${first} masters ${matched.length} of the ${learnCount} skills you are looking for — ${skills}. Standout: ${top ?? matched[0]}, where the mentor's experience runs deepest.`;
   }
   const strongest = [...m.mentor.teachSkills].sort(
     (a, b) => LEVEL_WEIGHT[b.level] - LEVEL_WEIGHT[a.level]
   )[0];
-  return `A experiência de ${first} em ${strongest?.name ?? "suas habilidades"} conversa com o seu objetivo — a conexão veio da análise semântica do que você busca e do que ele ensina.`;
+  return `${first}'s experience in ${strongest?.name ?? "the skills you need"} speaks to your goal — the connection came from the semantic analysis of what you are looking for and what they teach.`;
 }

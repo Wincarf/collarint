@@ -1,6 +1,6 @@
 "use client";
 
-// Tela de entrada: login, cadastro e acesso rápido às contas de demonstração
+// Entry screen: sign in, registration and quick access to demo accounts
 
 import { useState } from "react";
 import { useApp } from "./store";
@@ -15,10 +15,10 @@ import { Users, Sparkles, HandHeart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const DEMO_ACCOUNTS = [
-  { email: "lucas@demo.jci", label: "Lucas (mentorado)", icon: <Sparkles className="h-4 w-4" /> },
+  { email: "lucas@demo.jci", label: "Lucas (mentee)", icon: <Sparkles className="h-4 w-4" /> },
   { email: "marcos@demo.jci", label: "Marcos (mentor)", icon: <HandHeart className="h-4 w-4" /> },
-  { email: "carlos@demo.jci", label: "Carlos (convite pendente)", icon: <HandHeart className="h-4 w-4" /> },
-  { email: "admin@jci.org.br", label: "Administração JCI", icon: <Users className="h-4 w-4" /> },
+  { email: "carlos@demo.jci", label: "Carlos (pending invite)", icon: <HandHeart className="h-4 w-4" /> },
+  { email: "admin@jci.org.br", label: "JCI Administration", icon: <Users className="h-4 w-4" /> },
 ];
 
 export function LoginView() {
@@ -30,11 +30,11 @@ export function LoginView() {
   async function finishAuth() {
     const { user } = await api.me();
     if (!user) {
-      // Sessão não persistiu (ex.: navegador bloqueou o cookie). Falha explícita
-      // em vez de deixar o botão carregando para sempre.
-      throw new Error("Não foi possível manter a sessão neste navegador. Recarregue a página e tente novamente.");
+      // Session did not persist (e.g. the browser blocked the cookie). Fail explicitly
+      // instead of leaving the button loading forever.
+      throw new Error("Could not keep the session in this browser. Reload the page and try again.");
     }
-    setUser(user); // o AppRoot exibe o wizard de onboarding se o perfil estiver incompleto
+    setUser(user); // AppRoot shows the onboarding wizard if the profile is incomplete
   }
 
   async function handleLogin(email: string, password: string) {
@@ -44,8 +44,8 @@ export function LoginView() {
       await finishAuth();
     } catch (e) {
       toast({
-        title: "Não foi possível entrar",
-        description: e instanceof Error ? e.message : "Verifique seus dados.",
+        title: "Sign in failed",
+        description: e instanceof Error ? e.message : "Check your details.",
         variant: "destructive",
       });
     } finally {
@@ -60,8 +60,8 @@ export function LoginView() {
       await finishAuth();
     } catch (e) {
       toast({
-        title: "Não foi possível criar a conta",
-        description: e instanceof Error ? e.message : "Verifique seus dados.",
+        title: "Could not create account",
+        description: e instanceof Error ? e.message : "Check your details.",
         variant: "destructive",
       });
     } finally {
@@ -76,8 +76,8 @@ export function LoginView() {
       await finishAuth();
     } catch (e) {
       toast({
-        title: "Falha no acesso demo",
-        description: e instanceof Error ? e.message : "Tente novamente.",
+        title: "Demo sign-in failed",
+        description: e instanceof Error ? e.message : "Try again.",
         variant: "destructive",
       });
     } finally {
@@ -87,7 +87,7 @@ export function LoginView() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
-      {/* Hero — marca */}
+      {/* Hero — brand */}
       <div className="brand-gradient relative flex flex-col justify-between overflow-hidden px-6 py-10 lg:w-[46%] lg:px-12 lg:py-16">
         <div
           className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full opacity-20 blur-3xl"
@@ -102,45 +102,45 @@ export function LoginView() {
         <BrandLogo dark />
         <div className="relative mt-10 lg:mt-0">
           <p className="mb-3 inline-block rounded-full border border-gold/40 bg-white/5 px-3 py-1 text-xs font-medium tracking-wide text-gold">
-            Junior Chamber International · Programa de Mentoria
+            Junior Chamber International · Mentoring Program
           </p>
           <h1 className="max-w-xl text-3xl font-bold leading-tight text-white lg:text-4xl">
-            Conecte-se com quem já percorreu o caminho que você quer trilhar.
+            Connect with those who have already walked the path you want to take.
           </h1>
           <p className="mt-4 max-w-lg text-sm leading-relaxed text-white/80 lg:text-base">
-            O Collarint une membros experientes a quem busca desenvolvimento profissional por meio
-            de <strong className="text-gold">skill matching semântico</strong> — e acompanha sua
-            evolução com um <strong className="text-gold">IA Coach</strong> entre as sessões.
+            Collarint connects experienced members with those seeking professional growth through
+            <strong className="text-gold">semantic skill matching</strong> — and follows your
+            progress with an <strong className="text-gold">AI Coach</strong> between sessions.
           </p>
           <ul className="mt-8 space-y-3 text-sm text-white/85">
             <li className="flex items-start gap-3">
               <span className="mt-1 h-2 w-2 rounded-full bg-gold" aria-hidden="true" />
-              Matching inteligente: top 5 mentores com score de compatibilidade
+              Smart matching: top 5 mentors with a compatibility score
             </li>
             <li className="flex items-start gap-3">
               <span className="mt-1 h-2 w-2 rounded-full bg-gold" aria-hidden="true" />
-              Plano de 4 sessões gerado por IA a partir do seu objetivo
+              4-session plan generated by AI from your goal
             </li>
             <li className="flex items-start gap-3">
               <span className="mt-1 h-2 w-2 rounded-full bg-gold" aria-hidden="true" />
-              Coach entre sessões: tarefas, pautas e acompanhamento contínuo
+              Coach between sessions: tasks, agendas and continuous follow-up
             </li>
           </ul>
         </div>
         <p className="mt-10 text-xs text-white/50 lg:mt-0">
-          MVP de demonstração · Hackathon JCI · {new Date().getFullYear()}
+          Demo MVP · JCI Hackathon · {new Date().getFullYear()}
         </p>
       </div>
 
-      {/* Formulário */}
+      {/* Form */}
       <div className="flex flex-1 items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-md">
           <Card className="border-border shadow-sm">
             <CardContent className="p-6 sm:p-8">
               <Tabs defaultValue="login">
                 <TabsList className="mb-6 grid w-full grid-cols-2">
-                  <TabsTrigger value="login">Entrar</TabsTrigger>
-                  <TabsTrigger value="register">Criar conta</TabsTrigger>
+                  <TabsTrigger value="login">Sign in</TabsTrigger>
+                  <TabsTrigger value="register">Create account</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="login">
@@ -155,7 +155,7 @@ export function LoginView() {
 
           <div className="mt-6">
             <p className="mb-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Acesso rápido para demonstração
+              Quick demo access
             </p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {DEMO_ACCOUNTS.map((acc) => (
@@ -178,7 +178,7 @@ export function LoginView() {
               ))}
             </div>
             <p className="mt-3 text-center text-xs text-muted-foreground">
-              Senha de todas as contas demo: <code className="rounded bg-secondary px-1.5 py-0.5">demo1234</code>
+              Password for all demo accounts: <code className="rounded bg-secondary px-1.5 py-0.5">demo1234</code>
             </p>
           </div>
         </div>
@@ -209,25 +209,25 @@ function LoginForm({
         <Input
           id="login-email"
           type="email"
-          placeholder="voce@empresa.com.br"
+          placeholder="you@company.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="login-password">Senha</Label>
+        <Label htmlFor="login-password">Password</Label>
         <Input
           id="login-password"
           type="password"
-          placeholder="Sua senha"
+          placeholder="Your password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
       </div>
       <Button type="submit" className="w-full bg-navy hover:bg-navy-light" disabled={loading}>
-        {loading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : "Entrar"}
+        {loading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : "Sign in"}
       </Button>
     </form>
   );
@@ -252,19 +252,19 @@ function RegisterForm({
       }}
     >
       <div className="space-y-2">
-        <Label htmlFor="reg-name">Nome completo</Label>
-        <Input id="reg-name" placeholder="Ex.: Ana Beatriz Souza" value={name} onChange={(e) => setName(e.target.value)} required />
+        <Label htmlFor="reg-name">Full name</Label>
+        <Input id="reg-name" placeholder="e.g. Ana Beatriz Souza" value={name} onChange={(e) => setName(e.target.value)} required />
       </div>
       <div className="space-y-2">
         <Label htmlFor="reg-email">Email</Label>
-        <Input id="reg-email" type="email" placeholder="voce@empresa.com.br" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input id="reg-email" type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="reg-password">Senha</Label>
+        <Label htmlFor="reg-password">Password</Label>
         <Input
           id="reg-password"
           type="password"
-          placeholder="Mínimo de 6 caracteres"
+          placeholder="At least 6 characters"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           minLength={6}
@@ -272,10 +272,10 @@ function RegisterForm({
         />
       </div>
       <Button type="submit" className="w-full bg-navy hover:bg-navy-light" disabled={loading}>
-        {loading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : "Criar conta"}
+        {loading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : "Create account"}
       </Button>
       <p className="text-center text-xs text-muted-foreground">
-        Depois do cadastro, um breve questionário configura seu perfil de mentoria.
+        After signing up, a short questionnaire sets up your mentoring profile.
       </p>
     </form>
   );

@@ -1,20 +1,20 @@
-// Catálogo de skills pré-cadastradas do programa de mentoria JCI
+// Preset skill catalog of the JCI mentoring program
 
 import type { SkillEntry, SkillLevel } from "./types";
 
 export const PRESET_SKILLS = [
-  "Liderança",
-  "Gestão de Projetos",
-  "Finanças",
-  "Vendas",
-  "Comunicação em Público",
+  "Leadership",
+  "Project Management",
+  "Finance",
+  "Sales",
+  "Public Speaking",
   "Storytelling",
-  "Marketing Digital",
-  "Negociação",
-  "Empreendedorismo",
+  "Digital Marketing",
+  "Negotiation",
+  "Entrepreneurship",
   "Networking",
-  "Recursos Humanos",
-  "Tecnologia/IA",
+  "Human Resources",
+  "Technology/AI",
 ] as const;
 
 export const AVATAR_COLORS = [

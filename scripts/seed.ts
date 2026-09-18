@@ -1,8 +1,8 @@
-// Seed de demonstração — JCI Collarint
-// 12 usuários brasileiros realistas + 2 mentorias ativas com plano, histórico de
-// sessões, tarefas e conversas do Coach — para a demo nascer instantaneamente rica.
+// Demo seed — JCI Collarint
+// 12 realistic Brazilian members + 2 active mentorships with plan, session
+// history, tasks and Coach conversations — so the demo starts instantly rich.
 //
-// Uso: bun /home/z/my-project/scripts/seed.ts
+// Usage: bun /home/z/my-project/scripts/seed.ts
 
 import { PrismaClient } from "@prisma/client";
 import { randomBytes, scryptSync } from "node:crypto";
@@ -19,22 +19,28 @@ function hashPassword(password: string): string {
 
 const DEMO_PASSWORD = "demo1234";
 
+const LEVEL_EN: Record<SkillEntry["level"], string> = {
+  iniciante: "Beginner",
+  intermediario: "Intermediate",
+  avancado: "Advanced",
+};
+
 function emb(mode: "local", text: string): string {
   return JSON.stringify({ mode, vector: localEmbedding(text) });
 }
 
 function teachText(skills: SkillEntry[], goal: string | null): string {
   return (
-    "Posso ensinar: " +
-    skills.map((s) => `${s.name} (nível ${s.level})`).join(", ") +
-    (goal ? `. Contexto: ${goal}` : "")
+    "Skills I can teach: " +
+    skills.map((s) => `${s.name} (${LEVEL_EN[s.level]} level)`).join(", ") +
+    (goal ? `. Context: ${goal}` : "")
   );
 }
 function learnText(skills: SkillEntry[], goal: string | null): string {
   return (
-    "Quero aprender: " +
-    skills.map((s) => `${s.name} (nível ${s.level})`).join(", ") +
-    (goal ? `. Meu objetivo: ${goal}` : "")
+    "Skills I want to learn: " +
+    skills.map((s) => `${s.name} (${LEVEL_EN[s.level]} level)`).join(", ") +
+    (goal ? `. My goal: ${goal}` : "")
   );
 }
 
@@ -62,79 +68,79 @@ const USERS: SeedUser[] = [
   {
     email: "admin@jci.org.br",
     name: "Comissão de Desenvolvimento",
-    roleTitle: "Administração JCI",
+    roleTitle: "JCI Administration",
     city: "São Paulo, SP",
     avatarColor: "#D4A843",
-    teach: [{ name: "Liderança", level: "avancado" }],
+    teach: [{ name: "Leadership", level: "avancado" }],
     learn: [],
-    goal: "Acompanhar o programa de mentoria da organização.",
+    goal: "Oversee the organization's mentoring program.",
     availability: "1h",
     isAdmin: true,
   },
   {
     email: "marcos@demo.jci",
     name: "Marcos Ribeiro",
-    roleTitle: "Diretor Comercial",
+    roleTitle: "Commercial Director",
     city: "São Paulo, SP",
     avatarColor: "#0A1F44",
     teach: [
-      { name: "Negociação", level: "avancado" },
-      { name: "Vendas", level: "avancado" },
+      { name: "Negotiation", level: "avancado" },
+      { name: "Sales", level: "avancado" },
       { name: "Networking", level: "intermediario" },
     ],
     learn: [
-      { name: "Marketing Digital", level: "iniciante" },
-      { name: "Tecnologia/IA", level: "iniciante" },
+      { name: "Digital Marketing", level: "iniciante" },
+      { name: "Technology/AI", level: "iniciante" },
     ],
-    goal: "Expandir a operação comercial para canais digitais e entender como a IA pode potencializar vendas B2B.",
+    goal: "Expand the commercial operation to digital channels and understand how AI can boost B2B sales.",
     availability: "2h",
   },
   {
     email: "lucas@demo.jci",
     name: "Lucas Martins",
-    roleTitle: "Analista de Vendas",
+    roleTitle: "Sales Analyst",
     city: "Campinas, SP",
     avatarColor: "#1F4A7A",
-    teach: [{ name: "Marketing Digital", level: "iniciante" }],
+    teach: [{ name: "Digital Marketing", level: "iniciante" }],
     learn: [
-      { name: "Negociação", level: "iniciante" },
-      { name: "Vendas", level: "intermediario" },
-      { name: "Comunicação em Público", level: "iniciante" },
+      { name: "Negotiation", level: "iniciante" },
+      { name: "Sales", level: "intermediario" },
+      { name: "Public Speaking", level: "iniciante" },
     ],
-    goal: "Fechar minhas primeiras vendas enterprise e ganhar segurança em reuniões com decisores.",
+    goal: "Close my first enterprise deals and gain confidence in meetings with decision-makers.",
     availability: "2h",
   },
   {
     email: "marina@demo.jci",
     name: "Marina Duarte",
-    roleTitle: "Head de Produto",
+    roleTitle: "Head of Product",
     city: "Rio de Janeiro, RJ",
     avatarColor: "#D4A843",
     teach: [
-      { name: "Liderança", level: "avancado" },
-      { name: "Gestão de Projetos", level: "avancado" },
-      { name: "Comunicação em Público", level: "intermediario" },
+      { name: "Leadership", level: "avancado" },
+      { name: "Project Management", level: "avancado" },
+      { name: "Public Speaking", level: "intermediario" },
     ],
     learn: [
-      { name: "Tecnologia/IA", level: "iniciante" },
-      { name: "Finanças", level: "iniciante" },
+      { name: "Technology/AI", level: "iniciante" },
+      { name: "Finance", level: "iniciante" },
     ],
-    goal: "Aprender a usar IA no dia a dia da gestão de produto e entender melhor o lado financeiro do negócio.",
+    goal: "Learn to use AI in my day-to-day product management and better understand the financial side of the business.",
     availability: "2h",
   },
   {
     email: "patricia@demo.jci",
     name: "Patrícia Gomes",
-    roleTitle: "Gerente de Projetos",
+    roleTitle: "Project Manager",
     city: "Belo Horizonte, MG",
     avatarColor: "#2E6E5C",
-    teach: [{ name: "Gestão de Projetos", level: "intermediario" }],
+    teach: [{ name: "Project Management", level: "intermediario" }],
     learn: [
-      { name: "Liderança", level: "intermediario" },
-      { name: "Gestão de Projetos", level: "avancado" },
+      { name: "Leadership", level: "intermediario" },
+      { name: "Project Management", level: "avancado" },
       { name: "Storytelling", level: "iniciante" },
     ],
-    goal: "Ser promovida a gerente sênior liderando times multidisciplinares com autonomia.",
+    goal: "Get promoted to senior manager by leading multidisciplinary teams with autonomy.",
     availability: "2h",
   },
   {
@@ -144,115 +150,115 @@ const USERS: SeedUser[] = [
     city: "Curitiba, PR",
     avatarColor: "#7A5C1F",
     teach: [
-      { name: "Finanças", level: "avancado" },
-      { name: "Empreendedorismo", level: "intermediario" },
-      { name: "Negociação", level: "intermediario" },
+      { name: "Finance", level: "avancado" },
+      { name: "Entrepreneurship", level: "intermediario" },
+      { name: "Negotiation", level: "intermediario" },
     ],
-    learn: [{ name: "Marketing Digital", level: "iniciante" }],
-    goal: "Aprender a divulgar consultoria financeira para pequenas empresas nas redes sociais.",
+    learn: [{ name: "Digital Marketing", level: "iniciante" }],
+    goal: "Learn to promote my financial consulting services for small businesses on social media.",
     availability: "1h",
   },
   {
     email: "fernanda@demo.jci",
     name: "Fernanda Alves",
-    roleTitle: "Especialista de Marketing",
+    roleTitle: "Marketing Specialist",
     city: "Recife, PE",
     avatarColor: "#6E2E50",
     teach: [
-      { name: "Marketing Digital", level: "avancado" },
+      { name: "Digital Marketing", level: "avancado" },
       { name: "Storytelling", level: "avancado" },
-      { name: "Comunicação em Público", level: "intermediario" },
+      { name: "Public Speaking", level: "intermediario" },
     ],
     learn: [
-      { name: "Negociação", level: "iniciante" },
-      { name: "Finanças", level: "iniciante" },
+      { name: "Negotiation", level: "iniciante" },
+      { name: "Finance", level: "iniciante" },
     ],
-    goal: "Aprender a negociar salários e contratos de freelance com mais segurança.",
+    goal: "Learn to negotiate salaries and freelance contracts with more confidence.",
     availability: "2h",
   },
   {
     email: "rafael@demo.jci",
     name: "Rafael Souza",
-    roleTitle: "Desenvolvedor Full-Stack",
+    roleTitle: "Full-Stack Developer",
     city: "Florianópolis, SC",
     avatarColor: "#4A2E6E",
     teach: [
-      { name: "Tecnologia/IA", level: "avancado" },
-      { name: "Gestão de Projetos", level: "iniciante" },
+      { name: "Technology/AI", level: "avancado" },
+      { name: "Project Management", level: "iniciante" },
     ],
     learn: [
-      { name: "Comunicação em Público", level: "iniciante" },
+      { name: "Public Speaking", level: "iniciante" },
       { name: "Networking", level: "iniciante" },
-      { name: "Empreendedorismo", level: "iniciante" },
+      { name: "Entrepreneurship", level: "iniciante" },
     ],
-    goal: "Transitar para liderança técnica e, no futuro, fundar meu próprio SaaS.",
+    goal: "Move into technical leadership and, in the future, found my own SaaS.",
     availability: "4h+",
   },
   {
     email: "juliana@demo.jci",
     name: "Juliana Castro",
-    roleTitle: "Diretora de RH",
+    roleTitle: "HR Director",
     city: "Brasília, DF",
     avatarColor: "#2E5A6E",
     teach: [
-      { name: "Recursos Humanos", level: "avancado" },
-      { name: "Liderança", level: "intermediario" },
+      { name: "Human Resources", level: "avancado" },
+      { name: "Leadership", level: "intermediario" },
       { name: "Networking", level: "avancado" },
     ],
     learn: [
-      { name: "Tecnologia/IA", level: "iniciante" },
-      { name: "Marketing Digital", level: "iniciante" },
+      { name: "Technology/AI", level: "iniciante" },
+      { name: "Digital Marketing", level: "iniciante" },
     ],
-    goal: "Entender como a IA está mudando recrutamento e employer branding.",
+    goal: "Understand how AI is changing recruiting and employer branding.",
     availability: "2h",
   },
   {
     email: "bruno@demo.jci",
     name: "Bruno Henrique",
-    roleTitle: "Empreendedor",
+    roleTitle: "Entrepreneur",
     city: "Salvador, BA",
     avatarColor: "#8A5A2E",
-    teach: [{ name: "Vendas", level: "iniciante" }],
+    teach: [{ name: "Sales", level: "iniciante" }],
     learn: [
-      { name: "Empreendedorismo", level: "intermediario" },
-      { name: "Finanças", level: "iniciante" },
-      { name: "Marketing Digital", level: "iniciante" },
+      { name: "Entrepreneurship", level: "intermediario" },
+      { name: "Finance", level: "iniciante" },
+      { name: "Digital Marketing", level: "iniciante" },
     ],
-    goal: "Estruturar minha cafeteria para crescer de 1 para 3 unidades nos próximos 2 anos.",
+    goal: "Structure my coffee shop to grow from 1 to 3 locations over the next 2 years.",
     availability: "4h+",
   },
   {
     email: "camila@demo.jci",
     name: "Camila Rocha",
-    roleTitle: "Fundadora de Startup",
+    roleTitle: "Startup Founder",
     city: "Porto Alegre, RS",
     avatarColor: "#2E6E42",
     teach: [
-      { name: "Empreendedorismo", level: "avancado" },
+      { name: "Entrepreneurship", level: "avancado" },
       { name: "Storytelling", level: "intermediario" },
-      { name: "Marketing Digital", level: "intermediario" },
+      { name: "Digital Marketing", level: "intermediario" },
     ],
     learn: [
-      { name: "Gestão de Projetos", level: "iniciante" },
-      { name: "Recursos Humanos", level: "iniciante" },
+      { name: "Project Management", level: "iniciante" },
+      { name: "Human Resources", level: "iniciante" },
     ],
-    goal: "Organizar meus processos internos e aprender a contratar as primeiras pessoas do time.",
+    goal: "Organize my internal processes and learn to hire the first members of my team.",
     availability: "2h",
   },
   {
     email: "eduardo@demo.jci",
     name: "Eduardo Nunes",
-    roleTitle: "Consultor Sênior",
+    roleTitle: "Senior Consultant",
     city: "Fortaleza, CE",
     avatarColor: "#6E4A2E",
     teach: [
-      { name: "Negociação", level: "avancado" },
+      { name: "Negotiation", level: "avancado" },
       { name: "Storytelling", level: "avancado" },
-      { name: "Vendas", level: "avancado" },
+      { name: "Sales", level: "avancado" },
       { name: "Networking", level: "avancado" },
     ],
-    learn: [{ name: "Tecnologia/IA", level: "iniciante" }],
-    goal: "Usar IA para escalar minha consultoria sem perder personalização.",
+    learn: [{ name: "Technology/AI", level: "iniciante" }],
+    goal: "Use AI to scale my consulting practice without losing personalization.",
     availability: "1h",
   },
 ];
@@ -263,27 +269,27 @@ const PLAN_LUCAS: MentorshipPlan = {
   sessions: [
     {
       number: 1,
-      title: "Diagnóstico do processo comercial",
-      objective: "Mapear o funil de vendas atual do Lucas e identificar onde os deals travam.",
-      topics: ["Funil de vendas atual", "Principais perdas e motivos", "Perfil dos clientes enterprise"],
+      title: "Sales process diagnosis",
+      objective: "Map Lucas's current sales funnel and identify where deals get stuck.",
+      topics: ["Current sales funnel", "Main losses and reasons", "Enterprise client profile"],
     },
     {
       number: 2,
-      title: "Preparação e abertura de reuniões",
-      objective: "Estruturar uma rotina de pre-call research e uma abertura que gere credibilidade.",
-      topics: ["Research do decisor", "Estrutura de abertura", "Perguntas de diagnóstico"],
+      title: "Meeting preparation and opening",
+      objective: "Build a pre-call research routine and an opening that generates credibility.",
+      topics: ["Decision-maker research", "Opening structure", "Discovery questions"],
     },
     {
       number: 3,
-      title: "Tratamento de objeções",
-      objective: "Dominar as 5 objeções mais comuns em vendas enterprise e praticar respostas.",
-      topics: ["Objeções de preço", "Objeções de timing", "Técnica de reenquadramento"],
+      title: "Handling objections",
+      objective: "Master the 5 most common enterprise sales objections and practice responses.",
+      topics: ["Price objections", "Timing objections", "Reframing technique"],
     },
     {
       number: 4,
-      title: "Simulação de fechamento",
-      objective: "Role-play completo de uma negociação real com feedback estruturado do Marcos.",
-      topics: ["Role-play do deal real", "Concessões e contrapartidas", "Próximos passos pós-mentoria"],
+      title: "Closing simulation",
+      objective: "Full role-play of a real negotiation with structured feedback from Marcos.",
+      topics: ["Real deal role-play", "Concessions and trade-offs", "Post-mentorship next steps"],
     },
   ],
 };
@@ -294,33 +300,33 @@ const PLAN_PATRICIA: MentorshipPlan = {
   sessions: [
     {
       number: 1,
-      title: "Autoconhecimento de liderança",
-      objective: "Identificar o estilo de liderança atual da Patrícia e os gaps para o próximo nível.",
-      topics: ["Estilo de liderança", "Feedbacks anteriores", "Momentos de maior impacto"],
+      title: "Leadership self-awareness",
+      objective: "Identify Patrícia's current leadership style and the gaps to the next level.",
+      topics: ["Leadership style", "Past feedback", "Moments of highest impact"],
     },
     {
       number: 2,
-      title: "Delegação com segurança",
-      objective: "Criar um framework de delegação que libere tempo da Patrícia sem perder qualidade.",
-      topics: ["Matriz de delegação", "Níveis de autonomia", "Rituais de acompanhamento"],
+      title: "Delegating with confidence",
+      objective: "Create a delegation framework that frees up Patrícia's time without losing quality.",
+      topics: ["Delegation matrix", "Autonomy levels", "Follow-up rituals"],
     },
     {
       number: 3,
-      title: "Comunicação executiva",
-      objective: "Preparar a Patrícia para apresentar resultados para a diretoria com storytelling.",
-      topics: ["Estrutura executiva", "Storytelling com dados", "Como pedir a promoção"],
+      title: "Executive communication",
+      objective: "Prepare Patrícia to present results to the board with storytelling.",
+      topics: ["Executive structure", "Storytelling with data", "How to ask for the promotion"],
     },
     {
       number: 4,
-      title: "Plano de desenvolvimento",
-      objective: "Consolidar um plano de 90 dias para a promoção a gerente sênior.",
-      topics: ["Metas de 90 dias", "Padrinhos e visibilidade", "Rituais de revisão"],
+      title: "Development plan",
+      objective: "Consolidate a 90-day plan for the senior manager promotion.",
+      topics: ["90-day goals", "Sponsors and visibility", "Review rituals"],
     },
   ],
 };
 
 async function main() {
-  console.log("Limpando banco...");
+  console.log("Clearing database...");
   await prisma.notification.deleteMany();
   await prisma.sessionPrep.deleteMany();
   await prisma.coachMessage.deleteMany();
@@ -329,7 +335,7 @@ async function main() {
   await prisma.mentorship.deleteMany();
   await prisma.profile.deleteMany();
 
-  console.log("Criando 12 perfis...");
+  console.log("Creating 12 profiles...");
   const ids: Record<string, string> = {};
   for (const u of USERS) {
     const created = await prisma.profile.create({
@@ -353,14 +359,14 @@ async function main() {
     ids[u.email] = created.id;
   }
 
-  console.log("Criando mentoria ativa #1: Marcos → Lucas");
+  console.log("Creating active mentorship #1: Marcos → Lucas");
   const m1 = await prisma.mentorship.create({
     data: {
       mentorId: ids["marcos@demo.jci"],
       menteeId: ids["lucas@demo.jci"],
       status: "active",
       inviteMessage:
-        "Marcos, acompanho sua trajetória comercial na JCI e sei que você fechou contratos enterprise que eu só vejo nos meus sonhos. Quero muito aprender negociação com você!",
+        "Marcos, I have followed your commercial career at JCI and I know you have closed enterprise deals I only see in my dreams. I would love to learn negotiation with you!",
       plan: JSON.stringify(PLAN_LUCAS),
       createdAt: new Date(Date.now() - 14 * 24 * 3600 * 1000),
     },
@@ -372,9 +378,9 @@ async function main() {
         mentorshipId: m1.id,
         scheduledAt: daysFromNow(-9, 18, 30),
         notes:
-          "Mapeamos o funil de vendas do Lucas: 12 contas ativas, mas ele trata 'proposta enviada' como etapa final. Marcos trouxe o framework BANT e identificamos que o diagnóstico do decisor está fraco.",
+          "We mapped Lucas's sales funnel: 12 active accounts, but he treats 'proposal sent' as the final stage. Marcos brought the BANT framework and we identified that decision-maker discovery is the weak point.",
         commitments:
-          "Lucas: mapear os 3 principais decisores das contas estratégicas e gravar um pitch de 90s. Marcos: compartilhar template de pre-call research.",
+          "Lucas: map the 3 main decision-makers of the strategic accounts and record a 90s pitch. Marcos: share his pre-call research template.",
         completed: true,
       },
       {
@@ -389,21 +395,21 @@ async function main() {
     data: [
       {
         mentorshipId: m1.id,
-        title: "Mapear os 3 decisores das contas estratégicas (framework BANT)",
+        title: "Map the 3 decision-makers of the strategic accounts (BANT framework)",
         dueDate: daysFromNow(3, 23, 59),
         completed: false,
         source: "coach",
       },
       {
         mentorshipId: m1.id,
-        title: "Gravar pitch de 90 segundos e reouvir anotando 2 melhorias",
+        title: "Record a 90-second pitch and listen back noting 2 improvements",
         dueDate: daysFromNow(2, 23, 59),
         completed: false,
         source: "coach",
       },
       {
         mentorshipId: m1.id,
-        title: "Ler template de pre-call research do Marcos",
+        title: "Read Marcos's pre-call research template",
         dueDate: daysFromNow(-2, 23, 59),
         completed: true,
         source: "user",
@@ -417,34 +423,34 @@ async function main() {
         mentorshipId: m1.id,
         role: "assistant",
         content:
-          "Oi, **Lucas**! Que bom ter você por aqui.\n\nSua mentoria com **Marcos Ribeiro** já está rolando: na Sessão 1 vocês mapearam seu funil e descobriram que o ponto fraco é o **diagnóstico do decisor**. Você tem 2 tarefas pendentes nesta semana: mapear os 3 decisores com o framework BANT e gravar seu pitch de 90 segundos.\n\n**Ação concreta:** reserve 20 minutos hoje para listar os 3 decisores — amanhã a gente revisa junto antes da sessão de quinta com o Marcos.",
+          "Hi, **Lucas**! Great to have you here.\n\nYour mentorship with **Marcos Ribeiro** is already moving: in Session 1 you mapped your funnel together and found that the weak point is **decision-maker discovery**. You have 2 tasks pending this week: map the 3 decision-makers with the BANT framework and record your 90-second pitch.\n\n**Concrete action:** set aside 20 minutes today to list the 3 decision-makers — tomorrow we review them together before Thursday's session with Marcos.",
         createdAt: new Date(Date.now() - 8 * 24 * 3600 * 1000),
       },
       {
         mentorshipId: m1.id,
         role: "user",
         content:
-          "Coach, travei no mapeamento dos decisores. Não sei como descobrir quem decide sem parecer invasivo.",
+          "Coach, I'm stuck on mapping the decision-makers. I don't know how to find out who decides without seeming invasive.",
         createdAt: new Date(Date.now() - 7 * 24 * 3600 * 1000),
       },
       {
         mentorshipId: m1.id,
         role: "assistant",
         content:
-          "Pergunta excelente — e totalmente legítima: ninguém gosta de parecer investigador.\n\nA dica conecta com o que vocês discutiram na Sessão 1: no framework **BANT** (Budget, Authority, Need, Timeline), autoridade se **descobre com perguntas de processo**, não de poder. Experimente: *\"Como funcionam normalmente as decisões de compra na área de vocês?\"* — essa pergunta revela quem assina sem apontar dedo.\n\nOutro caminho leve: o **LinkedIn** te dá o cargo, e o sinal de autoridade vem quando você pergunta *\"quem mais costuma opinar numa decisão desse tamanho?\"*.\n\n**Ação concreta:** escreva essa pergunta de processo no seu caderno de calls e teste na próxima conversa com uma das suas 3 contas estratégicas. Depois me conta o que descobriu!",
+          "Excellent question — and totally legitimate: nobody likes to come across as an investigator.\n\nHere is the tip that connects with what you discussed in Session 1: in the **BANT** framework (Budget, Authority, Need, Timeline), authority is **discovered with process questions**, not power questions. Try: *\"How do purchasing decisions usually work in your area?\"* — that question reveals who signs off without pointing fingers.\n\nAnother light-touch route: **LinkedIn** gives you the title, and the authority signal comes when you ask *\"who else usually weighs in on a decision of this size?\"*.\n\n**Concrete action:** write that process question into your call notebook and test it in the next conversation with one of your 3 strategic accounts. Then tell me what you found!",
         createdAt: new Date(Date.now() - 7 * 24 * 3600 * 1000 + 120000),
       },
     ],
   });
 
-  console.log("Criando mentoria ativa #2: Marina → Patrícia");
+  console.log("Creating active mentorship #2: Marina → Patrícia");
   const m2 = await prisma.mentorship.create({
     data: {
       mentorId: ids["marina@demo.jci"],
       menteeId: ids["patricia@demo.jci"],
       status: "active",
       inviteMessage:
-        "Marina, quero me preparar para liderar times maiores e você é a referência que mais admiro aqui na JCI quando o assunto é gestão. Topa me mentorar?",
+        "Marina, I want to get ready to lead bigger teams and you are the reference I admire most here at JCI when it comes to management. Would you mentor me?",
       plan: JSON.stringify(PLAN_PATRICIA),
       createdAt: new Date(Date.now() - 10 * 24 * 3600 * 1000),
     },
@@ -456,9 +462,9 @@ async function main() {
         mentorshipId: m2.id,
         scheduledAt: daysFromNow(-6, 12, 0),
         notes:
-          "Marina usou o modelo Situational Leadership para mapear o time da Patrícia. Ficou claro que a Patrícia microgerencia os juniores e sobrecarrega os seniores.",
+          "Marina used the Situational Leadership model to map Patrícia's team. It became clear that Patrícia micro-manages the juniors and overloads the seniors.",
         commitments:
-          "Patrícia: escolher 2 entregas para delegar com nível de autonomia 'decido e aviso'. Marina: enviar o artigo da HBR sobre delegação.",
+          "Patrícia: pick 2 deliverables to delegate with the 'I decide and inform' autonomy level. Marina: send the HBR article on delegation.",
         completed: true,
       },
       {
@@ -473,14 +479,14 @@ async function main() {
     data: [
       {
         mentorshipId: m2.id,
-        title: "Delegar 2 entregas usando a matriz de autonomia da Sessão 1",
+        title: "Delegate 2 deliverables using the Session 1 autonomy matrix",
         dueDate: daysFromNow(4, 23, 59),
         completed: false,
         source: "coach",
       },
       {
         mentorshipId: m2.id,
-        title: "Ler o artigo da HBR sobre delegação enviado pela Marina",
+        title: "Read the HBR article on delegation Marina sent",
         dueDate: daysFromNow(-1, 23, 59),
         completed: true,
         source: "user",
@@ -494,20 +500,20 @@ async function main() {
         mentorshipId: m2.id,
         role: "assistant",
         content:
-          "Oi, **Patrícia**!\n\nNa última sessão com a **Marina** vocês definiram um objetivo bem claro: delegar 2 entregas usando a matriz de autonomia (\"decido e aviso\"). Essa é a ponte entre a Sessão 1 e a Sessão 2, que vai falar sobre **delegação com segurança**.\n\n**Ação concreta:** antes de quinta-feira, escolha as 2 entregas que vão sair da sua mão — comece pelas que mais te consomem tempo e menos exigem sua assinatura técnica.",
+          "Hi, **Patrícia**!\n\nIn your last session with **Marina** you set a very clear goal: delegate 2 deliverables using the autonomy matrix (\"I decide and inform\"). That is the bridge between Session 1 and Session 2, which will cover **delegating with confidence**.\n\n**Concrete action:** before Thursday, pick the 2 deliverables that will leave your hands — start with the ones that consume the most of your time and require the least of your technical sign-off.",
         createdAt: new Date(Date.now() - 5 * 24 * 3600 * 1000),
       },
     ],
   });
 
-  console.log("Criando convite pendente: Rafael → Carlos (para demo do painel do mentor)");
+  console.log("Creating pending invite: Rafael → Carlos (for the mentor panel demo)");
   const m3 = await prisma.mentorship.create({
     data: {
       mentorId: ids["carlos@demo.jci"],
       menteeId: ids["rafael@demo.jci"],
       status: "pending",
       inviteMessage:
-        "Carlos, estou construindo meu primeiro SaaS e preciso aprender a estruturar finanças de um negócio próprio. Sua visão de CFO + espírito JCI seria perfeita pra me guiar nessa jornada.",
+        "Carlos, I'm building my first SaaS and need to learn how to structure the finances of my own business. Your CFO vision + JCI spirit would be perfect to guide me on this journey.",
       createdAt: new Date(Date.now() - 2 * 24 * 3600 * 1000),
     },
   });
@@ -517,8 +523,8 @@ async function main() {
       {
         userId: ids["carlos@demo.jci"],
         type: "mentorship_invite",
-        title: "Rafael Souza quer ser mentorado por você",
-        body: "\"Carlos, estou construindo meu primeiro SaaS e preciso aprender a estruturar finanças...\"",
+        title: "Rafael Souza wants you as their mentor",
+        body: "\"Carlos, I'm building my first SaaS and need to learn how to structure finances...\"",
         payload: JSON.stringify({ mentorshipId: m3.id }),
         read: false,
         createdAt: new Date(Date.now() - 2 * 24 * 3600 * 1000),
@@ -526,26 +532,26 @@ async function main() {
       {
         userId: ids["lucas@demo.jci"],
         type: "session_scheduled",
-        title: "Próxima sessão com Marcos agendada",
-        body: "Sessão 2 · Preparação e abertura de reuniões",
+        title: "Next session with Marcos scheduled",
+        body: "Session 2 · Meeting preparation and opening",
         payload: JSON.stringify({ mentorshipId: m1.id }),
         read: false,
       },
       {
         userId: ids["patricia@demo.jci"],
         type: "session_scheduled",
-        title: "Próxima sessão com Marina agendada",
-        body: "Sessão 2 · Delegação com segurança",
+        title: "Next session with Marina scheduled",
+        body: "Session 2 · Delegating with confidence",
         payload: JSON.stringify({ mentorshipId: m2.id }),
         read: false,
       },
     ],
   });
 
-  console.log("\n✅ Seed concluído!");
-  console.log(`   ${USERS.length} usuários · senha de todos: ${DEMO_PASSWORD}`);
-  console.log("   Contas-chave: marcos@demo.jci (mentor), lucas@demo.jci (mentorado),");
-  console.log("   carlos@demo.jci (mentor com convite pendente), admin@jci.org.br (admin)");
+  console.log("\n✅ Seed complete!");
+  console.log(`   ${USERS.length} users · password for all: ${DEMO_PASSWORD}`);
+  console.log("   Key accounts: marcos@demo.jci (mentor), lucas@demo.jci (mentee),");
+  console.log("   carlos@demo.jci (mentor with pending invite), admin@jci.org.br (admin)");
 }
 
 main()

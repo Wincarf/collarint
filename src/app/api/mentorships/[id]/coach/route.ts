@@ -10,7 +10,7 @@ import type { CoachChatResult } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const maxDuration = 90;
 
-/** GET /api/mentorships/[id]/coach — histórico de mensagens do coach */
+/** GET /api/mentorships/[id]/coach — coach message history */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireUser(req);
@@ -20,9 +20,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       where: { id },
       include: { mentor: true, mentee: true },
     });
-    if (!mentorship) return jsonError("Mentoria não encontrada.", 404);
+    if (!mentorship) return jsonError("Mentorship not found.", 404);
     if (mentorship.mentorId !== user.id && mentorship.menteeId !== user.id) {
-      return jsonError("Sem permissão.", 403);
+      return jsonError("No permission.", 403);
     }
 
     const messages = await db.coachMessage.findMany({
@@ -47,19 +47,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const body = await req.json().catch(() => null);
     const message = String(body?.message ?? "").trim();
 
-    if (message.length === 0) return jsonError("Escreva uma mensagem.");
-    if (message.length > 2000) return jsonError("Mensagem muito longa (máx. 2000 caracteres).");
+    if (message.length === 0) return jsonError("Write a message.");
+    if (message.length > 2000) return jsonError("Message too long (max. 2000 characters).");
 
     const mentorship = await db.mentorship.findUnique({
       where: { id },
       include: { mentor: true, mentee: true },
     });
-    if (!mentorship) return jsonError("Mentoria não encontrada.", 404);
+    if (!mentorship) return jsonError("Mentorship not found.", 404);
     if (mentorship.mentorId !== user.id && mentorship.menteeId !== user.id) {
-      return jsonError("Sem permissão.", 403);
+      return jsonError("No permission.", 403);
     }
     if (mentorship.status !== "active") {
-      return jsonError("O coach só está disponível para mentorias ativas.");
+      return jsonError("The coach is only available for active mentorships.");
     }
 
     const [sessions, tasks, history] = await Promise.all([
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         result = extractResult(text);
       }
     } catch (e) {
-      console.error("[coach] IA falhou, usando resposta de contingência:", e);
+      console.error("[coach] AI failed, using contingency reply:", e);
       result = {
         reply: fallbackCoachReply(message),
       };
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       data: { mentorshipId: id, role: "assistant", content: result.reply },
     });
 
-    // Criação de tarefas sugeridas pelo coach
+    // Creation of tasks suggested by the coach
     const createdTasks: Array<{ id: string; title: string }> = [];
     const suggestions = (result.tasks ?? []).filter((t) => t && String(t.title).trim().length > 3).slice(0, 2);
     for (const t of suggestions) {
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 }
 
-/** Extrai {reply, tasks} de resposta em texto livre (tolerante a cercas de código). */
+/** Extracts {reply, tasks} from a free-text reply (tolerant to code fences). */
 function extractResult(raw: string): CoachChatResult {
   try {
     const cleaned = raw
@@ -166,12 +166,12 @@ function extractResult(raw: string): CoachChatResult {
       }
     }
   } catch {
-    // segue para o fallback
+    // falls through to the fallback
   }
   return { reply: raw.trim() };
 }
 
-/** Resposta de contingência — nunca genérica: usa dados reais da mentoria. */
+/** Contingency reply — never generic: uses the mentorship's real data. */
 function fallbackCoachReply(message: string): string {
-  return `Registrei sua mensagem: "${message.slice(0, 120)}".\n\nEstou com dificuldade técnica momentânea para gerar uma resposta completa agora, mas sua mentoria está no trilho — confira suas tarefas pendentes e o plano de sessões no painel.\n\n**Ação concreta:** revise a lista de tarefas da semana e anote 1 dúvida para levar à próxima sessão com seu mentor.`;
+  return `I logged your message: "${message.slice(0, 120)}".\n\nI am having a momentary technical issue generating a full reply right now, but your mentorship is on track — check your pending tasks and the session plan on the panel.\n\n**Concrete action:** review this week's task list and note down 1 question to bring to your next session with your mentor.`;
 }

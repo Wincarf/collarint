@@ -1,9 +1,9 @@
 "use client";
 
-// Wizard de onboarding em 3 passos:
-//  1. O que você pode ENSINAR? (skills + nível + campo livre)
-//  2. O que você quer APRENDER? (skills + nível + campo livre)
-//  3. Seu objetivo principal + disponibilidade semanal
+// 3-step onboarding wizard:
+//  1. What you can TEACH (skills + level + free-form field)
+//  2. What you want to LEARN (skills + level + free-form field)
+//  3. Your main goal + weekly availability
 
 import { useState } from "react";
 import { useApp } from "./store";
@@ -25,18 +25,18 @@ import { cn } from "@/lib/utils";
 
 const STEPS = [
   {
-    title: "O que você pode ENSINAR?",
-    subtitle: "Selecione as habilidades em que você tem experiência para compartilhar com outros membros.",
+    title: "What can you TEACH?",
+    subtitle: "Select the skills you have experience in to share with other members.",
     icon: <HandHeart className="h-5 w-5" />,
   },
   {
-    title: "O que você quer APRENDER?",
-    subtitle: "Diga onde quer chegar — isso alimenta o matching semântico com os mentores certos.",
+    title: "What do you want to LEARN?",
+    subtitle: "Tell us where you want to go — this powers semantic matching with the right mentors.",
     icon: <GraduationCap className="h-5 w-5" />,
   },
   {
-    title: "Seu objetivo principal",
-    subtitle: "Em uma frase, qual resultado você quer da mentoria? E quanto tempo pode dedicar por semana?",
+    title: "Your main goal",
+    subtitle: "In one sentence, what outcome do you want from the mentorship? And how much time can you dedicate per week?",
     icon: <Target className="h-5 w-5" />,
   },
 ];
@@ -71,8 +71,8 @@ export function OnboardingWizard() {
   async function handleFinish() {
     if (mainGoal.trim().length < 10) {
       toast({
-        title: "Conte um pouco mais sobre seu objetivo",
-        description: "Escreva pelo menos uma frase (10 caracteres) — a IA usa isso para gerar seu plano.",
+        title: "Tell us a bit more about your goal",
+        description: "Write at least one sentence (10 characters) — the AI uses it to generate your plan.",
         variant: "destructive",
       });
       return;
@@ -86,11 +86,11 @@ export function OnboardingWizard() {
         weeklyAvailability: availability,
       });
       setUser({ ...result.user, roleTitle: roleTitle || result.user.roleTitle, city: city || result.user.city });
-      toast({ title: "Perfil pronto!", description: "Seu matching semântico já está ativo." });
+      toast({ title: "Profile ready!", description: "Your semantic matching is now active." });
     } catch (e) {
       toast({
-        title: "Erro ao salvar perfil",
-        description: e instanceof Error ? e.message : "Tente novamente.",
+        title: "Failed to save profile",
+        description: e instanceof Error ? e.message : "Try again.",
         variant: "destructive",
       });
       setSaving(false);
@@ -116,9 +116,9 @@ export function OnboardingWizard() {
         <div className="mb-6">
           <div className="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground">
             <span>
-              Passo {step + 1} de {STEPS.length}
+              Step {step + 1} of {STEPS.length}
             </span>
-            <span>{Math.round(((step + 1) / STEPS.length) * 100)}% concluído</span>
+            <span>{Math.round(((step + 1) / STEPS.length) * 100)}% complete</span>
           </div>
           <Progress value={((step + 1) / STEPS.length) * 100} className="h-2" />
         </div>
@@ -161,41 +161,41 @@ export function OnboardingWizard() {
               <div className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="ob-role">Cargo atual (opcional)</Label>
+                    <Label htmlFor="ob-role">Current role (optional)</Label>
                     <Input
                       id="ob-role"
-                      placeholder="Ex.: Gerente Comercial"
+                      placeholder="e.g. Sales Manager"
                       value={roleTitle}
                       onChange={(e) => setRoleTitle(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ob-city">Cidade (opcional)</Label>
-                    <Input id="ob-city" placeholder="Ex.: São Paulo, SP" value={city} onChange={(e) => setCity(e.target.value)} />
+                    <Label htmlFor="ob-city">City (optional)</Label>
+                    <Input id="ob-city" placeholder="e.g. New York, NY" value={city} onChange={(e) => setCity(e.target.value)} />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="ob-goal">Seu objetivo principal</Label>
+                  <Label htmlFor="ob-goal">Your main goal</Label>
                   <Textarea
                     id="ob-goal"
                     rows={4}
-                    placeholder="Ex.: Quero me preparar para liderar um time comercial e fechar contratos com clientes maiores."
+                    placeholder="e.g. I want to prepare myself to lead a sales team and close contracts with larger clients."
                     value={mainGoal}
                     onChange={(e) => setMainGoal(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Este texto é usado pela IA para gerar seu plano de mentoria e encontrar matches semânticos.
+                    This text is used by the AI to generate your mentorship plan and find semantic matches.
                   </p>
                 </div>
 
                 <div className="space-y-3">
-                  <Label>Disponibilidade semanal</Label>
+                  <Label>Weekly availability</Label>
                   <RadioGroup value={availability} onValueChange={setAvailability} className="grid grid-cols-3 gap-3">
                     {[
-                      { value: "1h", label: "1h", hint: "por semana" },
-                      { value: "2h", label: "2h", hint: "por semana" },
-                      { value: "4h+", label: "4h+", hint: "por semana" },
+                      { value: "1h", label: "1h", hint: "per week" },
+                      { value: "2h", label: "2h", hint: "per week" },
+                      { value: "4h+", label: "4h+", hint: "per week" },
                     ].map((opt) => (
                       <Label
                         key={opt.value}
@@ -224,11 +224,11 @@ export function OnboardingWizard() {
                 disabled={step === 0}
                 className="gap-1"
               >
-                <ArrowLeft className="h-4 w-4" /> Voltar
+                <ArrowLeft className="h-4 w-4" /> Back
               </Button>
               {step < STEPS.length - 1 ? (
                 <Button onClick={() => setStep((s) => s + 1)} className="bg-navy hover:bg-navy-light gap-1">
-                  Continuar <ArrowRight className="h-4 w-4" />
+                  Continue <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
                 <Button onClick={handleFinish} disabled={saving} className="bg-navy hover:bg-navy-light gap-2">
@@ -237,7 +237,7 @@ export function OnboardingWizard() {
                   ) : (
                     <Check className="h-4 w-4" />
                   )}
-                  Concluir perfil
+                  Complete profile
                 </Button>
               )}
             </div>
@@ -276,7 +276,7 @@ function SkillsStep({
   return (
     <div className="space-y-5">
       <div>
-        <Label className="mb-2 block">Habilidades do catálogo</Label>
+        <Label className="mb-2 block">Skills from the catalog</Label>
         <div className="flex flex-wrap gap-2">
           {PRESET_SKILLS.map((name) => {
             const selected = list.some((s) => s.name === name);
@@ -302,12 +302,12 @@ function SkillsStep({
 
       <div>
         <Label htmlFor="custom-skill" className="mb-2 block">
-          Outra habilidade? Adicione livremente
+          Another skill? Add your own
         </Label>
         <div className="flex gap-2">
           <Input
             id="custom-skill"
-            placeholder="Ex.: Oratória avançada, Product Discovery..."
+            placeholder="e.g. Advanced public speaking, Product Discovery..."
             value={customInput}
             onChange={(e) => setCustomInput(e.target.value)}
             onKeyDown={(e) => {
@@ -318,7 +318,7 @@ function SkillsStep({
             }}
           />
           <Button type="button" variant="outline" onClick={addCustom} className="shrink-0 gap-1">
-            <Plus className="h-4 w-4" /> Adicionar
+            <Plus className="h-4 w-4" /> Add
           </Button>
         </div>
         {custom.length > 0 && (
@@ -329,7 +329,7 @@ function SkillsStep({
                 type="button"
                 onClick={() => onRemoveCustom(name)}
                 className="group rounded-full border border-gold/50 bg-gold-soft px-3 py-1 text-xs text-[#7a5c1f]"
-                title="Clique para remover"
+                title="Click to remove"
               >
                 {name} <span className="ml-1 opacity-60 group-hover:opacity-100">×</span>
               </button>
@@ -341,7 +341,7 @@ function SkillsStep({
       {list.length > 0 && (
         <div className="rounded-lg border border-border bg-secondary/50 p-4">
           <p className="mb-3 text-sm font-medium text-navy">
-            Selecione seu nível {list.length > 0 && `(${list.length} selecionada${list.length > 1 ? "s" : ""})`}
+            Select your level {list.length > 0 && `(${list.length} selected)`}
           </p>
           <div className="space-y-3">
             {list.map((skill) => (

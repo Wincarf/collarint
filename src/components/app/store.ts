@@ -1,6 +1,6 @@
 "use client";
 
-// Estado global da SPA (navegação + sessão)
+// SPA global state (navigation + session)
 
 import { create } from "zustand";
 import type { NotificationDTO, ProfileDTO } from "@/lib/types";

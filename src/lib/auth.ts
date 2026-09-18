@@ -1,6 +1,6 @@
-// Autenticação por email+senha com cookie httpOnly assinado (HMAC-SHA256).
-// Projetada para migrar para Supabase Auth sem alterar as telas: basta preencher
-// as variáveis SUPABASE_* no .env e as telas continuam chamando os mesmos endpoints.
+// Email+password authentication with a signed httpOnly cookie (HMAC-SHA256).
+// Designed to migrate to Supabase Auth without changing the screens: just fill
+// the SUPABASE_* variables in .env and the screens keep calling the same endpoints.
 
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies, headers } from "next/headers";
@@ -66,11 +66,11 @@ function parseSessionToken(token: string | undefined | null): string | null {
 
 // ---------- cookies ----------
 
-// A plataforma roda atrás de um proxy HTTPS (ver Caddyfile) e pode ser exibida
-// dentro de um iframe de outra origem. Cookies "lax" são descartados nesse
-// contexto por navegadores modernos, o que quebrava o login. Quando a requisição
-// chega por HTTPS usamos SameSite=None; Secure (aceito em iframes); no dev
-// local (http) mantemos lax, pois "none" exige "secure".
+// The platform runs behind an HTTPS proxy (see Caddyfile) and may be displayed
+// inside an iframe of a different origin. "Lax" cookies are dropped in that
+// context by modern browsers, which used to break the login. When the request
+// comes over HTTPS we use SameSite=None; Secure (accepted in iframes); in local
+// http dev we keep lax, since "none" requires "secure".
 async function isSecureRequest(): Promise<boolean> {
   try {
     const h = await headers();
@@ -102,11 +102,11 @@ export async function clearSessionCookie(): Promise<void> {
   store.set(COOKIE_NAME, "", await sessionCookieOptions(0));
 }
 
-// ---------- usuário atual ----------
+// ---------- current user ----------
 
-// A sessão é resolvida primeiro pelo header x-session-token (fallback robusto
-// para ambientes que bloqueiam cookies de terceiros, ex.: preview em iframe)
-// e depois pelo cookie httpOnly (caminho principal).
+// The session is resolved first from the x-session-token header (robust
+// fallback for environments that block third-party cookies, e.g. preview in
+// an iframe) and then from the httpOnly cookie (primary path).
 export async function getSessionProfile(req?: NextRequest): Promise<Profile | null> {
   let token: string | undefined | null;
   if (req) {
@@ -122,9 +122,9 @@ export async function getSessionProfile(req?: NextRequest): Promise<Profile | nu
 
 export class AuthError extends Error {}
 
-/** Para API routes: retorna o profile autenticado ou lança AuthError. */
+/** For API routes: returns the authenticated profile or throws AuthError. */
 export async function requireUser(req?: NextRequest): Promise<Profile> {
   const profile = await getSessionProfile(req);
-  if (!profile) throw new AuthError("Não autenticado");
+  if (!profile) throw new AuthError("Not authenticated");
   return profile;
 }

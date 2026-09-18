@@ -1,0 +1,892 @@
+     1→"use client";
+     2→
+     3→// Visão detalhada da mentoria — usada pelo mentorado (com IA Coach) e pelo mentor
+     4→// (agendamento, registro de sessões e visualização da preparação do mentorado).
+     5→
+     6→import { useCallback, useEffect, useRef, useState } from "react";
+     7→import { api } from "./api-client";
+     8→import type { MentorshipDTO, SessionDTO, TaskDTO } from "@/lib/types";
+     9→import { InitialsAvatar, SkillChip, StatusBadge, SectionTitle } from "./ui-bits";
+    10→import { Button } from "@/components/ui/button";
+    11→import { Card, CardContent } from "@/components/ui/card";
+    12→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+    13→import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+    14→import { Calendar } from "@/components/ui/calendar";
+    15→import { Checkbox } from "@/components/ui/checkbox";
+    16→import { Input } from "@/components/ui/input";
+    17→import { Label } from "@/components/ui/label";
+    18→import { Textarea } from "@/components/ui/textarea";
+    19→import ReactMarkdown from "react-markdown";
+    20→import { format } from "date-fns";
+    21→import { ptBR } from "date-fns/locale";
+    22→import {
+    23→  ArrowLeft,
+    24→  CalendarPlus,
+    25→  ClipboardList,
+    26→  Copy,
+    27→  Check,
+    28→  CheckCircle2,
+    29→  Circle,
+    30→  Loader2,
+    31→  MessageSquare,
+    32→  Plus,
+    33→  Route,
+    34→  Send,
+    35→  Sparkles,
+    36→  Users,
+    37→} from "lucide-react";
+    38→import { useToast } from "@/hooks/use-toast";
+    39→import { cn } from "@/lib/utils";
+    40→import { useApp } from "./store";
+    41→
+    42→interface CoachMsg {
+    43→  id: string;
+    44→  role: "user" | "assistant";
+    45→  content: string;
+    46→  createdAt: string;
+    47→}
+    48→
+    49→export function MentorshipView({ id, onBack }: { id: string; onBack: () => void }) {
+    50→  const [mentorship, setMentorship] = useState<MentorshipDTO | null>(null);
+    51→  const [loading, setLoading] = useState(true);
+    52→  const [error, setError] = useState<string | null>(null);
+    53→  const [scheduleOpen, setScheduleOpen] = useState(false);
+    54→  const [prepDialog, setPrepDialog] = useState<{ content: string } | null>(null);
+    55→
+    56→  const { toast } = useToast();
+    57→  const me = useApp((s) => s.user);
+    58→  // O papel (mentor/mentee) é derivado dos dados da mentoria após o carregamento
+    59→  const role: "mentee" | "mentor" =
+    60→    mentorship && me && mentorship.mentor.id === me.id ? "mentor" : "mentee";
+    61→
+    62→  const load = useCallback(async () => {
+    63→    try {
+    64→      const data = await api.mentorship(id);
+    65→      setMentorship(data.mentorship);
+    66→      setError(null);
+    67→    } catch (e) {
+    68→      setError(e instanceof Error ? e.message : "Erro ao carregar mentoria.");
+    69→    } finally {
+    70→      setLoading(false);
+    71→    }
+    72→  }, [id]);
+    73→
+    74→  useEffect(() => {
+    75→    load();
+    76→  }, [load]);
+    77→
+    78→  if (loading) {
+    79→    return (
+    80→      <div className="flex justify-center py-16">
+    81→        <span className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-gold" />
+    82→      </div>
+    83→    );
+    84→  }
+    85→
+    86→  if (error || !mentorship) {
+    87→    return (
+    88→      <div className="py-16 text-center text-sm text-muted-foreground">
+    89→        {error ?? "Mentoria não encontrada."}
+    90→        <div className="mt-4">
+    91→          <Button variant="outline" onClick={onBack} className="gap-2">
+    92→            <ArrowLeft className="h-4 w-4" /> Voltar
+    93→          </Button>
+    94→        </div>
+    95→      </div>
+    96→    );
+    97→  }
+    98→
+    99→  const other = role === "mentee" ? mentorship.mentor : mentorship.mentee;
+   100→  const isInvitePending = mentorship.status === "pending";
+   101→
+   102→  return (
+   103→    <div className="space-y-6">
+   104→      <Button variant="ghost" onClick={onBack} className="gap-2 -ml-2 text-muted-foreground">
+   105→        <ArrowLeft className="h-4 w-4" /> Voltar
+   106→      </Button>
+   107→
+   108→      {/* Cabeçalho do par */}
+   109→      <Card className="border-border shadow-sm">
+   110→        <CardContent className="p-5 sm:p-6">
+   111→          <div className="flex flex-wrap items-start gap-4">
+   112→            <InitialsAvatar name={other.name} color={other.avatarColor} size="lg" />
+   113→            <div className="min-w-0 flex-1">
+   114→              <div className="flex flex-wrap items-center gap-2">
+   115→                <h1 className="text-xl font-bold text-navy">{other.name}</h1>
+   116→                <StatusBadge status={mentorship.status} />
+   117→              </div>
+   118→              <p className="text-sm text-muted-foreground">
+   119→                {other.roleTitle}
+   120→                {other.city ? ` · ${other.city}` : ""}
+   121→                {role === "mentee" ? " · Seu mentor" : " · Seu mentorado"}
+   122→              </p>
+   123→              <div className="mt-3 flex flex-wrap gap-1.5">
+   124→                {other.teachSkills.slice(0, 4).map((s) => (
+   125→                  <SkillChip key={s.name} skill={s} showLevel={false} variant="gold" />
+   126→                ))}
+   127→              </div>
+   128→            </div>
+   129→            {role === "mentor" && mentorship.status === "active" && (
+   130→              <div className="flex gap-2">
+   131→                <Button onClick={() => setScheduleOpen(true)} className="bg-navy hover:bg-navy-light gap-2">
+   132→                  <CalendarPlus className="h-4 w-4" /> Agendar sessão
+   133→                </Button>
+   134→              </div>
+   135→            )}
+   136→          </div>
+   137→          {isInvitePending && (
+   138→            <div className="mt-4 rounded-lg bg-gold-soft/60 p-4">
+   139→              <p className="text-sm font-medium text-[#7a5c1f]">Mensagem de convite:</p>
+   140→              <p className="mt-1 text-sm text-[#7a5c1f]/90">&ldquo;{mentorship.inviteMessage}&rdquo;</p>
+   141→            </div>
+   142→          )}
+   143→        </CardContent>
+   144→      </Card>
+   145→
+   146→      {mentorship.status === "active" && (
+   147→        <div className="grid gap-6 lg:grid-cols-5">
+   148→          {/* Coluna esquerda: plano + sessões */}
+   149→          <div className="space-y-6 lg:col-span-3">
+   150→            <PlanTrail plan={mentorship.plan} sessions={mentorship.sessions} />
+   151→            <SessionsSection mentorship={mentorship} role={role} onChanged={load} />
+   152→            {role === "mentor" && <MenteePrepSection mentorshipId={mentorship.id} onOpen={setPrepDialog} />}
+   153→          </div>
+   154→
+   155→          {/* Coluna direita: coach (mentee) ou tarefas (ambos) */}
+   156→          <div className="space-y-6 lg:col-span-2">
+   157→            {role === "mentee" ? (
+   158→              <CoachChat
+   159→                mentorshipId={mentorship.id}
+   160→                mentorName={mentorship.mentor.name.split(" ")[0]}
+   161→                planReady={!!mentorship.plan}
+   162→                onTaskCreated={load}
+   163→              />
+   164→            ) : (
+   165→              <TasksCard mentorshipId={mentorship.id} tasks={mentorship.tasks} editable={false} onChanged={load} />
+   166→            )}
+   167→            {role === "mentee" && (
+   168→              <TasksCard mentorshipId={mentorship.id} tasks={mentorship.tasks} editable onChanged={load} />
+   169→            )}
+   170→          </div>
+   171→        </div>
+   172→      )}
+   173→
+   174→      {mentorship.status === "declined" && (
+   175→        <Card className="border-border">
+   176→          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+   177→            Esta proposta de mentoria não foi aceita. Explore outros matches na plataforma — há novos
+   178→            mentores chegando sempre.
+   179→          </CardContent>
+   180→        </Card>
+   181→      )}
+   182→
+   183→      <ScheduleDialog
+   184→        open={scheduleOpen}
+   185→        onOpenChange={setScheduleOpen}
+   186→        mentorshipId={mentorship.id}
+   187→        onDone={load}
+   188→      />
+   189→
+   190→      <Dialog open={!!prepDialog} onOpenChange={(open) => !open && setPrepDialog(null)}>
+   191→        <DialogContent className="max-h-[80vh] overflow-y-auto scroll-slim sm:max-w-lg">
+   192→          <DialogHeader>
+   193→            <DialogTitle className="text-navy">Preparação do mentorado para a próxima sessão</DialogTitle>
+   194→          </DialogHeader>
+   195→          <div className="prose-sm text-sm">
+   196→            <MarkdownContent content={prepDialog?.content ?? ""} />
+   197→          </div>
+   198→        </DialogContent>
+   199→      </Dialog>
+   200→    </div>
+   201→  );
+   202→}
+   203→
+   204→/* ---------------- Plano de mentoria (trilha visual) ---------------- */
+   205→
+   206→function PlanTrail({ plan, sessions }: { plan: MentorshipDTO["plan"]; sessions: SessionDTO[] }) {
+   207→  if (!plan) return null;
+   208→  const completed = sessions.filter((s) => s.completed).length;
+   209→
+   210→  return (
+   211→    <Card className="border-border shadow-sm">
+   212→      <CardContent className="p-5 sm:p-6">
+   213→        <SectionTitle
+   214→          title="Plano de mentoria"
+   215→          subtitle={
+   216→            plan.generatedBy === "ai"
+   217→              ? "Trilha gerada por IA a partir do seu objetivo"
+   218→              : "Trilha estruturada em 4 sessões"
+   219→          }
+   220→          action={
+   221→            <span className="rounded-full bg-gold-soft px-3 py-1 text-xs font-semibold text-[#7a5c1f]">
+   222→              {completed}/{plan.sessions.length} sessões
+   223→            </span>
+   224→          }
+   225→        />
+   226→        <ol className="mt-5 space-y-0">
+   227→          {plan.sessions.map((s, i) => {
+   228→            const done = i < completed;
+   229→            const current = i === completed;
+   230→            return (
+   231→              <li key={s.number} className="relative flex gap-4 pb-6 last:pb-0">
+   232→                {i < plan.sessions.length - 1 && (
+   233→                  <span
+   234→                    className={cn("absolute left-[15px] top-8 h-full w-0.5", done ? "bg-gold" : "bg-border")}
+   235→                    aria-hidden="true"
+   236→                  />
+   237→                )}
+   238→                <span
+   239→                  className={cn(
+   240→                    "relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold",
+   241→                    done
+   242→                      ? "border-gold bg-gold text-navy"
+   243→                      : current
+   244→                        ? "border-gold bg-card text-[#7a5c1f]"
+   245→                        : "border-border bg-card text-muted-foreground"
+   246→                  )}
+   247→                >
+   248→                  {done ? <Check className="h-4 w-4" /> : s.number}
+   249→                </span>
+   250→                <div className="min-w-0 pt-1">
+   251→                  <p className={cn("font-semibold", done || current ? "text-navy" : "text-muted-foreground")}>
+   252→                    {s.title}
+   253→                  </p>
+   254→                  <p className="mt-0.5 text-sm text-muted-foreground">{s.objective}</p>
+   255→                  {s.topics.length > 0 && (
+   256→                    <div className="mt-2 flex flex-wrap gap-1.5">
+   257→                      {s.topics.map((t) => (
+   258→                        <span key={t} className="rounded-md bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+   259→                          {t}
+   260→                        </span>
+   261→                      ))}
+   262→                    </div>
+   263→                  )}
+   264→                </div>
+   265→              </li>
+   266→            );
+   267→          })}
+   268→        </ol>
+   269→      </CardContent>
+   270→    </Card>
+   271→  );
+   272→}
+   273→
+   274→/* ---------------- Sessões ---------------- */
+   275→
+   276→function SessionsSection({
+   277→  mentorship,
+   278→  role,
+   279→  onChanged,
+   280→}: {
+   281→  mentorship: MentorshipDTO;
+   282→  role: "mentee" | "mentor";
+   283→  onChanged: () => void;
+   284→}) {
+   285→  const [recording, setRecording] = useState<SessionDTO | null>(null);
+   286→  const [notes, setNotes] = useState("");
+   287→  const [commitments, setCommitments] = useState("");
+   288→  const [saving, setSaving] = useState(false);
+   289→  const { toast } = useToast();
+   290→
+   291→  const upcoming = mentorship.sessions.filter((s) => !s.completed);
+   292→  const past = mentorship.sessions.filter((s) => s.completed);
+   293→
+   294→  async function saveRecord(complete: boolean) {
+   295→    if (!recording) return;
+   296→    if (complete && notes.trim().length === 0) {
+   297→      toast({ title: "Descreva o que foi discutido", variant: "destructive" });
+   298→      return;
+   299→    }
+   300→    setSaving(true);
+   301→    try {
+   302→      await api.recordSession(mentorship.id, recording.id, notes.trim(), commitments.trim(), complete);
+   303→      toast({ title: complete ? "Sessão registrada!" : "Registro salvo." });
+   304→      setRecording(null);
+   305→      setNotes("");
+   306→      setCommitments("");
+   307→      onChanged();
+   308→    } catch (e) {
+   309→      toast({ title: "Erro ao registrar", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+   310→    } finally {
+   311→      setSaving(false);
+   312→    }
+   313→  }
+   314→
+   315→  return (
+   316→    <Card className="border-border shadow-sm">
+   317→      <CardContent className="p-5 sm:p-6">
+   318→        <SectionTitle title="Sessões" subtitle="Agendamentos, registros e compromissos" />
+   319→        <div className="mt-4 space-y-3">
+   320→          {upcoming.length === 0 && past.length === 0 && (
+   321→            <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+   322→              Nenhuma sessão ainda.
+   323→              {role === "mentor" ? " Agende a primeira sessão." : " Seu mentor vai agendar a primeira sessão."}
+   324→            </p>
+   325→          )}
+   326→
+   327→          {upcoming.map((s) => (
+   328→            <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gold/40 bg-gold-soft/40 p-4">
+   329→              <div className="flex items-center gap-3">
+   330→                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gold text-navy">
+   331→                  <CalendarPlus className="h-4 w-4" />
+   332→                </span>
+   333→                <div>
+   334→                  <p className="text-sm font-semibold text-navy">
+   335→                    {s.scheduledAt
+   336→                      ? format(new Date(s.scheduledAt), "EEEE, d 'de' MMMM 'às' HH:mm", { locale: ptBR })
+   337→                      : "Data a definir"}
+   338→                  </p>
+   339→                  <p className="text-xs text-muted-foreground">Próxima sessão agendada</p>
+   340→                </div>
+   341→              </div>
+   342→              {role === "mentor" && (
+   343→                <Button
+   344→                  size="sm"
+   345→                  variant="outline"
+   346→                  onClick={() => {
+   347→                    setRecording(s);
+   348→                    setNotes("");
+   349→                    setCommitments("");
+   350→                  }}
+   351→                  className="gap-1 border-gold/50"
+   352→                >
+   353→                  <ClipboardList className="h-4 w-4" /> Registrar sessão
+   354→                </Button>
+   355→              )}
+   356→            </div>
+   357→          ))}
+   358→
+   359→          {[...past].reverse().map((s) => (
+   360→            <div key={s.id} className="rounded-lg border border-border bg-card p-4">
+   361→              <div className="flex flex-wrap items-center justify-between gap-2">
+   362→                <p className="text-sm font-semibold text-navy">
+   363→                  {s.scheduledAt
+   364→                    ? format(new Date(s.scheduledAt), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })
+   365→                    : "Sessão"}
+   366→                </p>
+   367→                {role === "mentor" && (
+   368→                  <Button
+   369→                    size="sm"
+   370→                    variant="ghost"
+   371→                    className="h-7 gap-1 text-xs text-muted-foreground"
+   372→                    onClick={() => {
+   373→                      setRecording(s);
+   374→                      setNotes(s.notes ?? "");
+   375→                      setCommitments(s.commitments ?? "");
+   376→                    }}
+   377→                  >
+   378→                    Editar registro
+   379→                  </Button>
+   380→                )}
+   381→              </div>
+   382→              {s.notes && (
+   383→                <div className="mt-2 text-sm">
+   384→                  <span className="font-medium text-navy">O que foi discutido: </span>
+   385→                  <span className="text-muted-foreground">{s.notes}</span>
+   386→                </div>
+   387→              )}
+   388→              {s.commitments && (
+   389→                <div className="mt-1.5 text-sm">
+   390→                  <span className="font-medium text-navy">Compromissos assumidos: </span>
+   391→                  <span className="text-muted-foreground">{s.commitments}</span>
+   392→                </div>
+   393→              )}
+   394→              {!s.notes && !s.commitments && <p className="mt-1 text-xs text-muted-foreground">Sem registro detalhado.</p>}
+   395→            </div>
+   396→          ))}
+   397→        </div>
+   398→      </CardContent>
+   399→
+   400→      <Dialog open={!!recording} onOpenChange={(open) => !open && setRecording(null)}>
+   401→        <DialogContent className="sm:max-w-lg">
+   402→          <DialogHeader>
+   403→            <DialogTitle className="text-navy">Registro da sessão</DialogTitle>
+   404→          </DialogHeader>
+   405→          <div className="space-y-4">
+   406→            <div className="space-y-2">
+   407→              <Label htmlFor="sess-notes">O que foi discutido</Label>
+   408→              <Textarea
+   409→                id="sess-notes"
+   410→                rows={4}
+   411→                placeholder="Ex.: Mapeamos o funil de vendas e identificamos que o diagnóstico do decisor é o ponto fraco..."
+   412→                value={notes}
+   413→                onChange={(e) => setNotes(e.target.value)}
+   414→              />
+   415→            </div>
+   416→            <div className="space-y-2">
+   417→              <Label htmlFor="sess-commit">Compromissos assumidos</Label>
+   418→              <Textarea
+   419→                id="sess-commit"
+   420→                rows={3}
+   421→                placeholder="Ex.: Mentorado vai mapear os 3 decisores; mentor vai enviar o template de research."
+   422→                value={commitments}
+   423→                onChange={(e) => setCommitments(e.target.value)}
+   424→              />
+   425→            </div>
+   426→          </div>
+   427→          <DialogFooter className="gap-2 sm:gap-0">
+   428→            <Button variant="outline" onClick={() => saveRecord(false)} disabled={saving}>
+   429→              Salvar rascunho
+   430→            </Button>
+   431→            <Button
+   432→              onClick={() => saveRecord(true)}
+   433→              disabled={saving}
+   434→              className="bg-navy hover:bg-navy-light gap-2"
+   435→            >
+   436→              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+   437→              Concluir sessão
+   438→            </Button>
+   439→          </DialogFooter>
+   440→        </DialogContent>
+   441→      </Dialog>
+   442→    </Card>
+   443→  );
+   444→}
+   445→
+   446→/* ---------------- Tarefas ---------------- */
+   447→
+   448→function TasksCard({
+   449→  mentorshipId,
+   450→  tasks,
+   451→  editable,
+   452→  onChanged,
+   453→}: {
+   454→  mentorshipId: string;
+   455→  tasks: TaskDTO[];
+   456→  editable: boolean;
+   457→  onChanged: () => void;
+   458→}) {
+   459→  const [newTitle, setNewTitle] = useState("");
+   460→  const [adding, setAdding] = useState(false);
+   461→  const { toast } = useToast();
+   462→
+   463→  const pending = tasks.filter((t) => !t.completed);
+   464→  const done = tasks.filter((t) => t.completed);
+   465→
+   466→  async function toggle(task: TaskDTO) {
+   467→    try {
+   468→      await api.toggleTask(task.id, !task.completed);
+   469→      onChanged();
+   470→    } catch (e) {
+   471→      toast({ title: "Erro", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+   472→    }
+   473→  }
+   474→
+   475→  async function add() {
+   476→    if (newTitle.trim().length < 3) return;
+   477→    setAdding(true);
+   478→    try {
+   479→      await api.createTask(mentorshipId, newTitle.trim());
+   480→      setNewTitle("");
+   481→      onChanged();
+   482→    } catch (e) {
+   483→      toast({ title: "Erro", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+   484→    } finally {
+   485→      setAdding(false);
+   486→    }
+   487→  }
+   488→
+   489→  return (
+   490→    <Card className="border-border shadow-sm">
+   491→      <CardContent className="p-5">
+   492→        <SectionTitle title="Tarefas" subtitle={editable ? "Criadas por você e pelo Coach" : "Acompanhamento do mentorado"} />
+   493→        <div className="mt-4 space-y-2">
+   494→          {tasks.length === 0 && (
+   495→            <p className="py-4 text-center text-sm text-muted-foreground">
+   496→              Nenhuma tarefa ainda. {editable ? "O Coach cria tarefas no chat — ou adicione a primeira." : ""}
+   497→            </p>
+   498→          )}
+   499→          {pending.map((t) => (
+   500→            <TaskRow key={t.id} task={t} onToggle={toggle} />
+   501→          ))}
+   502→          {done.map((t) => (
+   503→            <TaskRow key={t.id} task={t} onToggle={toggle} />
+   504→          ))}
+   505→        </div>
+   506→        {editable && (
+   507→          <div className="mt-4 flex gap-2">
+   508→            <Input
+   509→              placeholder="Nova tarefa..."
+   510→              value={newTitle}
+   511→              onChange={(e) => setNewTitle(e.target.value)}
+   512→              onKeyDown={(e) => e.key === "Enter" && add()}
+   513→            />
+   514→            <Button size="icon" variant="outline" onClick={add} disabled={adding} aria-label="Adicionar tarefa">
+   515→              <Plus className="h-4 w-4" />
+   516→            </Button>
+   517→          </div>
+   518→        )}
+   519→      </CardContent>
+   520→    </Card>
+   521→  );
+   522→}
+   523→
+   524→function TaskRow({ task, onToggle }: { task: TaskDTO; onToggle: (task: TaskDTO) => void }) {
+   525→  const overdue = task.dueDate && !task.completed && new Date(task.dueDate) < new Date();
+   526→  return (
+   527→    <label
+   528→      className={cn(
+   529→        "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
+   530→        task.completed ? "border-transparent bg-secondary/60" : "border-border bg-card hover:border-gold/40"
+   531→      )}
+   532→    >
+   533→      <Checkbox
+   534→        checked={task.completed}
+   535→        onCheckedChange={() => onToggle(task)}
+   536→        className="mt-0.5"
+   537→        aria-label={task.title}
+   538→      />
+   539→      <div className="min-w-0">
+   540→        <p className={cn("text-sm", task.completed ? "text-muted-foreground line-through" : "text-navy font-medium")}>
+   541→          {task.title}
+   542→        </p>
+   543→        {task.dueDate && (
+   544→          <p className={cn("mt-0.5 text-xs", overdue ? "font-medium text-destructive" : "text-muted-foreground")}>
+   545→            Prazo: {format(new Date(task.dueDate), "d 'de' MMM", { locale: ptBR })}
+   546→            {task.source === "coach" && !task.completed ? " · criada pelo Coach" : ""}
+   547→          </p>
+   548→        )}
+   549→      </div>
+   550→    </label>
+   551→  );
+   552→}
+   553→
+   554→/* ---------------- IA Coach (chat + preparar sessão) ---------------- */
+   555→
+   556→function CoachChat({
+   557→  mentorshipId,
+   558→  mentorName,
+   559→  planReady,
+   560→  onTaskCreated,
+   561→}: {
+   562→  mentorshipId: string;
+   563→  mentorName: string;
+   564→  planReady: boolean;
+   565→  onTaskCreated: () => void;
+   566→}) {
+   567→  const [messages, setMessages] = useState<CoachMsg[]>([]);
+   568→  const [loaded, setLoaded] = useState(false);
+   569→  const [input, setInput] = useState("");
+   570→  const [sending, setSending] = useState(false);
+   571→  const [preparing, setPreparing] = useState(false);
+   572→  const [prepResult, setPrepResult] = useState<{ content: string } | null>(null);
+   573→  const [copied, setCopied] = useState(false);
+   574→  const scrollRef = useRef<HTMLDivElement>(null);
+   575→  const { toast } = useToast();
+   576→
+   577→  useEffect(() => {
+   578→    api
+   579→      .coachHistory(mentorshipId)
+   580→      .then((data) => setMessages(data.messages))
+   581→      .catch(() => undefined)
+   582→      .finally(() => setLoaded(true));
+   583→  }, [mentorshipId]);
+   584→
+   585→  useEffect(() => {
+   586→    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+   587→  }, [messages, sending]);
+   588→
+   589→  async function send() {
+   590→    const text = input.trim();
+   591→    if (!text || sending) return;
+   592→    setInput("");
+   593→    setSending(true);
+   594→    const optimistic: CoachMsg = {
+   595→      id: `tmp-${Date.now()}`,
+   596→      role: "user",
+   597→      content: text,
+   598→      createdAt: new Date().toISOString(),
+   599→    };
+   600→    setMessages((m) => [...m, optimistic]);
+   601→    try {
+   602→      const res = await api.coachSend(mentorshipId, text);
+   603→      setMessages((m) => [...m.filter((x) => x.id !== optimistic.id), res.userMessage, res.assistantMessage]);
+   604→      if (res.createdTasks.length > 0) {
+   605→        toast({
+   606→          title: "Tarefa criada pelo Coach",
+   607→          description: res.createdTasks.map((t) => t.title).join(" · "),
+   608→        });
+   609→        onTaskCreated();
+   610→      }
+   611→    } catch (e) {
+   612→      setMessages((m) => m.filter((x) => x.id !== optimistic.id));
+   613→      toast({ title: "Falha ao enviar", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+   614→    } finally {
+   615→      setSending(false);
+   616→    }
+   617→  }
+   618→
+   619→  async function prepareSession() {
+   620→    setPreparing(true);
+   621→    try {
+   622→      const res = await api.prepare(mentorshipId);
+   623→      setPrepResult(res.prep);
+   624→      toast({ title: "Preparação pronta!", description: "Copie a pauta e leve para a sessão." });
+   625→      onTaskCreated();
+   626→    } catch (e) {
+   627→      toast({ title: "Erro ao preparar", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+   628→    } finally {
+   629→      setPreparing(false);
+   630→    }
+   631→  }
+   632→
+   633→  async function copyPrep() {
+   634→    const content = prepResult?.content;
+   635→    if (!content) return;
+   636→    try {
+   637→      await navigator.clipboard.writeText(content);
+   638→      setCopied(true);
+   639→      setTimeout(() => setCopied(false), 2000);
+   640→    } catch {
+   641→      toast({ title: "Não foi possível copiar automaticamente", description: "Selecione o texto e copie manualmente." });
+   642→    }
+   643→  }
+   644→
+   645→  return (
+   646→    <Card className="flex h-[640px] flex-col border-border shadow-sm">
+   647→      <div className="border-b border-border p-4">
+   648→        <div className="flex items-center gap-2">
+   649→          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-navy text-gold">
+   650→            <Sparkles className="h-4 w-4" />
+   651→          </span>
+   652→          <div className="min-w-0 flex-1">
+   653→            <p className="text-sm font-bold text-navy">IA Coach</p>
+   654→            <p className="text-xs text-muted-foreground">Apoio entre sessões · sempre com o contexto da sua mentoria</p>
+   655→          </div>
+   656→        </div>
+   657→        <Button
+   658→          size="sm"
+   659→          onClick={prepareSession}
+   660→          disabled={preparing || !planReady}
+   661→          className="mt-3 w-full gap-2 bg-gold font-semibold text-navy hover:bg-gold/90"
+   662→        >
+   663→          {preparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+   664→          Preparar próxima sessão
+   665→        </Button>
+   666→      </div>
+   667→
+   668→      <div ref={scrollRef} className="scroll-slim flex-1 space-y-3 overflow-y-auto p-4">
+   669→        {!loaded && (
+   670→          <div className="flex justify-center py-8">
+   671→            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+   672→          </div>
+   673→        )}
+   674→        {loaded && messages.length === 0 && (
+   675→          <div className="rounded-lg bg-secondary p-4 text-sm text-muted-foreground">
+   676→            Olá! Eu sou seu Coach Collarint. Conheço seu objetivo, seu plano com {mentorName} e suas tarefas.
+   677→            Me pergunte o que precisar — por exemplo: <em>&ldquo;como devo me preparar para a próxima sessão?&rdquo;</em>
+   678→          </div>
+   679→        )}
+   680→        {messages.map((m) => (
+   681→          <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+   682→            <div
+   683→              className={cn(
+   684→                "max-w-[92%] rounded-2xl px-3.5 py-2.5 text-sm",
+   685→                m.role === "user"
+   686→                  ? "rounded-br-md bg-navy text-white"
+   687→                  : "rounded-bl-md border border-border bg-card text-foreground"
+   688→              )}
+   689→            >
+   690→              {m.role === "assistant" ? (
+   691→                <MarkdownContent content={m.content} />
+   692→              ) : (
+   693→                <p className="whitespace-pre-wrap">{m.content}</p>
+   694→              )}
+   695→            </div>
+   696→          </div>
+   697→        ))}
+   698→        {sending && (
+   699→          <div className="flex justify-start">
+   700→            <div className="rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3">
+   701→              <span className="flex gap-1">
+   702→                <span className="typing-dot h-2 w-2 rounded-full bg-muted-foreground" />
+   703→                <span className="typing-dot h-2 w-2 rounded-full bg-muted-foreground" />
+   704→                <span className="typing-dot h-2 w-2 rounded-full bg-muted-foreground" />
+   705→              </span>
+   706→            </div>
+   707→          </div>
+   708→        )}
+   709→      </div>
+   710→
+   711→      <div className="border-t border-border p-3">
+   712→        <form
+   713→          className="flex gap-2"
+   714→          onSubmit={(e) => {
+   715→            e.preventDefault();
+   716→            send();
+   717→          }}
+   718→        >
+   719→          <Input
+   720→            placeholder="Escreva para o Coach..."
+   721→            value={input}
+   722→            onChange={(e) => setInput(e.target.value)}
+   723→            disabled={sending}
+   724→          />
+   725→          <Button type="submit" size="icon" className="shrink-0 bg-navy hover:bg-navy-light" disabled={sending || !input.trim()} aria-label="Enviar mensagem">
+   726→            <Send className="h-4 w-4" />
+   727→          </Button>
+   728→        </form>
+   729→      </div>
+   730→
+   731→      <Dialog open={!!prepResult} onOpenChange={(open) => !open && setPrepResult(null)}>
+   732→        <DialogContent className="max-h-[80vh] sm:max-w-lg">
+   733→          <DialogHeader>
+   734→            <DialogTitle className="text-navy">Sua preparação para a próxima sessão</DialogTitle>
+   735→          </DialogHeader>
+   736→          <div className="scroll-slim max-h-[50vh] overflow-y-auto pr-2 text-sm">
+   737→            <MarkdownContent content={prepResult?.content ?? ""} />
+   738→          </div>
+   739→          <DialogFooter>
+   740→            <Button onClick={copyPrep} className="gap-2 bg-navy hover:bg-navy-light">
+   741→              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+   742→              {copied ? "Copiado!" : "Copiar para área de transferência"}
+   743→            </Button>
+   744→          </DialogFooter>
+   745→        </DialogContent>
+   746→      </Dialog>
+   747→    </Card>
+   748→  );
+   749→}
+   750→
+   751→function MenteePrepSection({
+   752→  mentorshipId,
+   753→  onOpen,
+   754→}: {
+   755→  mentorshipId: string;
+   756→  onOpen: (prep: { content: string }) => void;
+   757→}) {
+   758→  const [prep, setPrep] = useState<{ content: string; createdAt: string } | null>(null);
+   759→  const [loading, setLoading] = useState(true);
+   760→
+   761→  useEffect(() => {
+   762→    api
+   763→      .mentorship(mentorshipId)
+   764→      .then((d) => setPrep(d.mentorship.latestPrep))
+   765→      .catch(() => undefined)
+   766→      .finally(() => setLoading(false));
+   767→  }, [mentorshipId]);
+   768→
+   769→  return (
+   770→    <Card className="border-border shadow-sm">
+   771→      <CardContent className="p-5 sm:p-6">
+   772→        <SectionTitle
+   773→          title="Preparação do mentorado"
+   774→          subtitle="Pauta e perguntas geradas pelo IA Coach antes da sessão"
+   775→        />
+   776→        <div className="mt-4">
+   777→          {loading && <p className="text-sm text-muted-foreground">Carregando...</p>}
+   778→          {!loading && !prep && (
+   779→            <p className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
+   780→              O mentorado ainda não gerou a preparação da próxima sessão.
+   781→            </p>
+   782→          )}
+   783→          {!loading && prep && (
+   784→            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gold/40 bg-gold-soft/40 p-4">
+   785→              <div className="flex items-center gap-3">
+   786→                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gold text-navy">
+   787→                  <Route className="h-4 w-4" />
+   788→                </span>
+   789→                <div>
+   790→                  <p className="text-sm font-semibold text-navy">Pauta + 5 perguntas prontas</p>
+   791→                  <p className="text-xs text-muted-foreground">
+   792→                    Gerada em{" "}
+   793→                    {format(new Date(prep.createdAt), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+   794→                  </p>
+   795→                </div>
+   796→              </div>
+   797→              <Button size="sm" variant="outline" className="gap-1 border-gold/50" onClick={() => onOpen(prep)}>
+   798→                <MessageSquare className="h-4 w-4" /> Ver preparação
+   799→              </Button>
+   800→            </div>
+   801→          )}
+   802→        </div>
+   803→      </CardContent>
+   804→    </Card>
+   805→  );
+   806→}
+   807→
+   808→/* ---------------- Agendamento (mentor) ---------------- */
+   809→
+   810→function ScheduleDialog({
+   811→  open,
+   812→  onOpenChange,
+   813→  mentorshipId,
+   814→  onDone,
+   815→}: {
+   816→  open: boolean;
+   817→  onOpenChange: (open: boolean) => void;
+   818→  mentorshipId: string;
+   819→  onDone: () => void;
+   820→}) {
+   821→  const [date, setDate] = useState<Date | undefined>(new Date());
+   822→  const [time, setTime] = useState("19:00");
+   823→  const [saving, setSaving] = useState(false);
+   824→  const { toast } = useToast();
+   825→
+   826→  async function confirm() {
+   827→    if (!date) return;
+   828→    const [h, m] = time.split(":").map(Number);
+   829→    const d = new Date(date);
+   830→    d.setHours(h, m, 0, 0);
+   831→    setSaving(true);
+   832→    try {
+   833→      await api.scheduleSession(mentorshipId, d.toISOString());
+   834→      toast({ title: "Sessão agendada!", description: format(d, "d 'de' MMMM 'às' HH:mm", { locale: ptBR }) });
+   835→      onOpenChange(false);
+   836→      onDone();
+   837→    } catch (e) {
+   838→      toast({ title: "Erro ao agendar", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+   839→    } finally {
+   840→      setSaving(false);
+   841→    }
+   842→  }
+   843→
+   844→  return (
+   845→    <Dialog open={open} onOpenChange={onOpenChange}>
+   846→      <DialogContent className="sm:max-w-md">
+   847→        <DialogHeader>
+   848→          <DialogTitle className="text-navy">Agendar próxima sessão</DialogTitle>
+   849→        </DialogHeader>
+   850→        <div className="space-y-4">
+   851→          <div className="flex justify-center rounded-lg border border-border p-2">
+   852→            <Calendar mode="single" selected={date} onSelect={setDate} locale={ptBR} disabled={{ before: new Date() }} />
+   853→          </div>
+   854→          <div className="space-y-2">
+   855→            <Label htmlFor="sess-time">Hora</Label>
+   856→            <Input id="sess-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+   857→          </div>
+   858→        </div>
+   859→        <DialogFooter>
+   860→          <Button onClick={confirm} disabled={saving || !date} className="w-full gap-2 bg-navy hover:bg-navy-light">
+   861→            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarPlus className="h-4 w-4" />}
+   862→            Confirmar agendamento
+   863→          </Button>
+   864→        </DialogFooter>
+   865→      </DialogContent>
+   866→    </Dialog>
+   867→  );
+   868→}
+   869→
+   870→/* ---------------- Markdown leve ---------------- */
+   871→
+   872→function MarkdownContent({ content }: { content: string }) {
+   873→  return (
+   874→    <ReactMarkdown
+   875→      components={{
+   876→        p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+   877→        strong: ({ children }) => <strong className="font-semibold text-navy">{children}</strong>,
+   878→        em: ({ children }) => <em>{children}</em>,
+   879→        ul: ({ children }) => <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0">{children}</ul>,
+   880→        ol: ({ children }) => <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0">{children}</ol>,
+   881→        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+   882→        h1: ({ children }) => <h3 className="mb-1 text-sm font-bold text-navy">{children}</h3>,
+   883→        h2: ({ children }) => <h3 className="mb-1 text-sm font-bold text-navy">{children}</h3>,
+   884→        h3: ({ children }) => <h4 className="mb-1 text-sm font-semibold text-navy">{children}</h4>,
+   885→        code: ({ children }) => <code className="rounded bg-secondary px-1 py-0.5 text-xs">{children}</code>,
+   886→      }}
+   887→    >
+   888→      {content}
+   889→    </ReactMarkdown>
+   890→  );
+   891→}
+   892→

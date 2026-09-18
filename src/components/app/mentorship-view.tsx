@@ -1,7 +1,7 @@
 "use client";
 
-// Visão detalhada da mentoria — usada pelo mentorado (com IA Coach) e pelo mentor
-// (agendamento, registro de sessões e visualização da preparação do mentorado).
+// Detailed mentorship view — used by the mentee (with the AI Coach) and by the mentor
+// (scheduling, session logging, and viewing the mentee's preparation).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api-client";
@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import ReactMarkdown from "react-markdown";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import {
   ArrowLeft,
   CalendarPlus,
@@ -55,7 +55,7 @@ export function MentorshipView({ id, onBack }: { id: string; onBack: () => void 
 
   const { toast } = useToast();
   const me = useApp((s) => s.user);
-  // O papel (mentor/mentee) é derivado dos dados da mentoria após o carregamento
+  // The role (mentor/mentee) is derived from the mentorship data after loading
   const role: "mentee" | "mentor" =
     mentorship && me && mentorship.mentor.id === me.id ? "mentor" : "mentee";
 
@@ -65,7 +65,7 @@ export function MentorshipView({ id, onBack }: { id: string; onBack: () => void 
       setMentorship(data.mentorship);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao carregar mentoria.");
+      setError(e instanceof Error ? e.message : "Failed to load mentorship.");
     } finally {
       setLoading(false);
     }
@@ -86,10 +86,10 @@ export function MentorshipView({ id, onBack }: { id: string; onBack: () => void 
   if (error || !mentorship) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
-        {error ?? "Mentoria não encontrada."}
+        {error ?? "Mentorship not found."}
         <div className="mt-4">
           <Button variant="outline" onClick={onBack} className="gap-2">
-            <ArrowLeft className="h-4 w-4" /> Voltar
+            <ArrowLeft className="h-4 w-4" /> Back
           </Button>
         </div>
       </div>
@@ -102,10 +102,10 @@ export function MentorshipView({ id, onBack }: { id: string; onBack: () => void 
   return (
     <div className="space-y-6">
       <Button variant="ghost" onClick={onBack} className="gap-2 -ml-2 text-muted-foreground">
-        <ArrowLeft className="h-4 w-4" /> Voltar
+        <ArrowLeft className="h-4 w-4" /> Back
       </Button>
 
-      {/* Cabeçalho do par */}
+      {/* Pair header */}
       <Card className="border-border shadow-sm">
         <CardContent className="p-5 sm:p-6">
           <div className="flex flex-wrap items-start gap-4">
@@ -118,7 +118,7 @@ export function MentorshipView({ id, onBack }: { id: string; onBack: () => void 
               <p className="text-sm text-muted-foreground">
                 {other.roleTitle}
                 {other.city ? ` · ${other.city}` : ""}
-                {role === "mentee" ? " · Seu mentor" : " · Seu mentorado"}
+                {role === "mentee" ? " · Your mentor" : " · Your mentee"}
               </p>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {other.teachSkills.slice(0, 4).map((s) => (
@@ -129,14 +129,14 @@ export function MentorshipView({ id, onBack }: { id: string; onBack: () => void 
             {role === "mentor" && mentorship.status === "active" && (
               <div className="flex gap-2">
                 <Button onClick={() => setScheduleOpen(true)} className="bg-navy hover:bg-navy-light gap-2">
-                  <CalendarPlus className="h-4 w-4" /> Agendar sessão
+                  <CalendarPlus className="h-4 w-4" /> Schedule session
                 </Button>
               </div>
             )}
           </div>
           {isInvitePending && (
             <div className="mt-4 rounded-lg bg-gold-soft/60 p-4">
-              <p className="text-sm font-medium text-[#7a5c1f]">Mensagem de convite:</p>
+              <p className="text-sm font-medium text-[#7a5c1f]">Invite message:</p>
               <p className="mt-1 text-sm text-[#7a5c1f]/90">&ldquo;{mentorship.inviteMessage}&rdquo;</p>
             </div>
           )}
@@ -145,14 +145,14 @@ export function MentorshipView({ id, onBack }: { id: string; onBack: () => void 
 
       {mentorship.status === "active" && (
         <div className="grid gap-6 lg:grid-cols-5">
-          {/* Coluna esquerda: plano + sessões */}
+          {/* Left column: plan + sessions */}
           <div className="space-y-6 lg:col-span-3">
             <PlanTrail plan={mentorship.plan} sessions={mentorship.sessions} />
             <SessionsSection mentorship={mentorship} role={role} onChanged={load} />
             {role === "mentor" && <MenteePrepSection mentorshipId={mentorship.id} onOpen={setPrepDialog} />}
           </div>
 
-          {/* Coluna direita: coach (mentee) ou tarefas (ambos) */}
+          {/* Right column: coach (mentee) or tasks (both) */}
           <div className="space-y-6 lg:col-span-2">
             {role === "mentee" ? (
               <CoachChat
@@ -174,8 +174,8 @@ export function MentorshipView({ id, onBack }: { id: string; onBack: () => void 
       {mentorship.status === "declined" && (
         <Card className="border-border">
           <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            Esta proposta de mentoria não foi aceita. Explore outros matches na plataforma — há novos
-            mentores chegando sempre.
+            This mentorship request was not accepted. Explore other matches on the platform — new
+            mentors are always joining.
           </CardContent>
         </Card>
       )}
@@ -190,7 +190,7 @@ export function MentorshipView({ id, onBack }: { id: string; onBack: () => void 
       <Dialog open={!!prepDialog} onOpenChange={(open) => !open && setPrepDialog(null)}>
         <DialogContent className="max-h-[80vh] overflow-y-auto scroll-slim sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-navy">Preparação do mentorado para a próxima sessão</DialogTitle>
+            <DialogTitle className="text-navy">Mentee&apos;s preparation for the next session</DialogTitle>
           </DialogHeader>
           <div className="prose-sm text-sm">
             <MarkdownContent content={prepDialog?.content ?? ""} />
@@ -201,7 +201,7 @@ export function MentorshipView({ id, onBack }: { id: string; onBack: () => void 
   );
 }
 
-/* ---------------- Plano de mentoria (trilha visual) ---------------- */
+/* ---------------- Mentorship plan (visual trail) ---------------- */
 
 function PlanTrail({ plan, sessions }: { plan: MentorshipDTO["plan"]; sessions: SessionDTO[] }) {
   if (!plan) return null;
@@ -211,15 +211,15 @@ function PlanTrail({ plan, sessions }: { plan: MentorshipDTO["plan"]; sessions: 
     <Card className="border-border shadow-sm">
       <CardContent className="p-5 sm:p-6">
         <SectionTitle
-          title="Plano de mentoria"
+          title="Mentorship plan"
           subtitle={
             plan.generatedBy === "ai"
-              ? "Trilha gerada por IA a partir do seu objetivo"
-              : "Trilha estruturada em 4 sessões"
+              ? "AI-generated plan tailored to your goal"
+              : "Structured 4-session plan"
           }
           action={
             <span className="rounded-full bg-gold-soft px-3 py-1 text-xs font-semibold text-[#7a5c1f]">
-              {completed}/{plan.sessions.length} sessões
+              {completed}/{plan.sessions.length} sessions
             </span>
           }
         />
@@ -271,7 +271,7 @@ function PlanTrail({ plan, sessions }: { plan: MentorshipDTO["plan"]; sessions: 
   );
 }
 
-/* ---------------- Sessões ---------------- */
+/* ---------------- Sessions ---------------- */
 
 function SessionsSection({
   mentorship,
@@ -294,19 +294,19 @@ function SessionsSection({
   async function saveRecord(complete: boolean) {
     if (!recording) return;
     if (complete && notes.trim().length === 0) {
-      toast({ title: "Descreva o que foi discutido", variant: "destructive" });
+      toast({ title: "Describe what was discussed", variant: "destructive" });
       return;
     }
     setSaving(true);
     try {
       await api.recordSession(mentorship.id, recording.id, notes.trim(), commitments.trim(), complete);
-      toast({ title: complete ? "Sessão registrada!" : "Registro salvo." });
+      toast({ title: complete ? "Session logged!" : "Draft saved." });
       setRecording(null);
       setNotes("");
       setCommitments("");
       onChanged();
     } catch (e) {
-      toast({ title: "Erro ao registrar", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+      toast({ title: "Error logging session", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -315,12 +315,12 @@ function SessionsSection({
   return (
     <Card className="border-border shadow-sm">
       <CardContent className="p-5 sm:p-6">
-        <SectionTitle title="Sessões" subtitle="Agendamentos, registros e compromissos" />
+        <SectionTitle title="Sessions" subtitle="Scheduling, session notes, and commitments" />
         <div className="mt-4 space-y-3">
           {upcoming.length === 0 && past.length === 0 && (
             <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Nenhuma sessão ainda.
-              {role === "mentor" ? " Agende a primeira sessão." : " Seu mentor vai agendar a primeira sessão."}
+              No sessions yet.
+              {role === "mentor" ? " Schedule the first session." : " Your mentor will schedule the first session."}
             </p>
           )}
 
@@ -333,10 +333,10 @@ function SessionsSection({
                 <div>
                   <p className="text-sm font-semibold text-navy">
                     {s.scheduledAt
-                      ? format(new Date(s.scheduledAt), "EEEE, d 'de' MMMM 'às' HH:mm", { locale: ptBR })
-                      : "Data a definir"}
+                      ? format(new Date(s.scheduledAt), "EEEE, MMMM d 'at' HH:mm", { locale: enUS })
+                      : "Date to be set"}
                   </p>
-                  <p className="text-xs text-muted-foreground">Próxima sessão agendada</p>
+                  <p className="text-xs text-muted-foreground">Next session scheduled</p>
                 </div>
               </div>
               {role === "mentor" && (
@@ -350,7 +350,7 @@ function SessionsSection({
                   }}
                   className="gap-1 border-gold/50"
                 >
-                  <ClipboardList className="h-4 w-4" /> Registrar sessão
+                  <ClipboardList className="h-4 w-4" /> Log session
                 </Button>
               )}
             </div>
@@ -361,8 +361,8 @@ function SessionsSection({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-navy">
                   {s.scheduledAt
-                    ? format(new Date(s.scheduledAt), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })
-                    : "Sessão"}
+                    ? format(new Date(s.scheduledAt), "MMMM d, yyyy 'at' HH:mm", { locale: enUS })
+                    : "Session"}
                 </p>
                 {role === "mentor" && (
                   <Button
@@ -375,23 +375,23 @@ function SessionsSection({
                       setCommitments(s.commitments ?? "");
                     }}
                   >
-                    Editar registro
+                    Edit notes
                   </Button>
                 )}
               </div>
               {s.notes && (
                 <div className="mt-2 text-sm">
-                  <span className="font-medium text-navy">O que foi discutido: </span>
+                  <span className="font-medium text-navy">What was discussed: </span>
                   <span className="text-muted-foreground">{s.notes}</span>
                 </div>
               )}
               {s.commitments && (
                 <div className="mt-1.5 text-sm">
-                  <span className="font-medium text-navy">Compromissos assumidos: </span>
+                  <span className="font-medium text-navy">Commitments made: </span>
                   <span className="text-muted-foreground">{s.commitments}</span>
                 </div>
               )}
-              {!s.notes && !s.commitments && <p className="mt-1 text-xs text-muted-foreground">Sem registro detalhado.</p>}
+              {!s.notes && !s.commitments && <p className="mt-1 text-xs text-muted-foreground">No detailed notes.</p>}
             </div>
           ))}
         </div>
@@ -400,25 +400,25 @@ function SessionsSection({
       <Dialog open={!!recording} onOpenChange={(open) => !open && setRecording(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-navy">Registro da sessão</DialogTitle>
+            <DialogTitle className="text-navy">Session notes</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="sess-notes">O que foi discutido</Label>
+              <Label htmlFor="sess-notes">What was discussed</Label>
               <Textarea
                 id="sess-notes"
                 rows={4}
-                placeholder="Ex.: Mapeamos o funil de vendas e identificamos que o diagnóstico do decisor é o ponto fraco..."
+                placeholder="e.g. We mapped the sales funnel and identified the decision-maker diagnosis as the weak spot..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="sess-commit">Compromissos assumidos</Label>
+              <Label htmlFor="sess-commit">Commitments made</Label>
               <Textarea
                 id="sess-commit"
                 rows={3}
-                placeholder="Ex.: Mentorado vai mapear os 3 decisores; mentor vai enviar o template de research."
+                placeholder="e.g. Mentee will map the 3 decision-makers; mentor will send the research template."
                 value={commitments}
                 onChange={(e) => setCommitments(e.target.value)}
               />
@@ -426,7 +426,7 @@ function SessionsSection({
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => saveRecord(false)} disabled={saving}>
-              Salvar rascunho
+              Save draft
             </Button>
             <Button
               onClick={() => saveRecord(true)}
@@ -434,7 +434,7 @@ function SessionsSection({
               className="bg-navy hover:bg-navy-light gap-2"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              Concluir sessão
+              Complete session
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -443,7 +443,7 @@ function SessionsSection({
   );
 }
 
-/* ---------------- Tarefas ---------------- */
+/* ---------------- Tasks ---------------- */
 
 function TasksCard({
   mentorshipId,
@@ -468,7 +468,7 @@ function TasksCard({
       await api.toggleTask(task.id, !task.completed);
       onChanged();
     } catch (e) {
-      toast({ title: "Erro", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+      toast({ title: "Error", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
     }
   }
 
@@ -480,7 +480,7 @@ function TasksCard({
       setNewTitle("");
       onChanged();
     } catch (e) {
-      toast({ title: "Erro", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+      toast({ title: "Error", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
     } finally {
       setAdding(false);
     }
@@ -489,11 +489,11 @@ function TasksCard({
   return (
     <Card className="border-border shadow-sm">
       <CardContent className="p-5">
-        <SectionTitle title="Tarefas" subtitle={editable ? "Criadas por você e pelo Coach" : "Acompanhamento do mentorado"} />
+        <SectionTitle title="Tasks" subtitle={editable ? "Created by you and the Coach" : "Mentee's task tracking"} />
         <div className="mt-4 space-y-2">
           {tasks.length === 0 && (
             <p className="py-4 text-center text-sm text-muted-foreground">
-              Nenhuma tarefa ainda. {editable ? "O Coach cria tarefas no chat — ou adicione a primeira." : ""}
+              No tasks yet. {editable ? "The Coach creates tasks in the chat — or add the first one." : ""}
             </p>
           )}
           {pending.map((t) => (
@@ -506,12 +506,12 @@ function TasksCard({
         {editable && (
           <div className="mt-4 flex gap-2">
             <Input
-              placeholder="Nova tarefa..."
+              placeholder="New task..."
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && add()}
             />
-            <Button size="icon" variant="outline" onClick={add} disabled={adding} aria-label="Adicionar tarefa">
+            <Button size="icon" variant="outline" onClick={add} disabled={adding} aria-label="Add task">
               <Plus className="h-4 w-4" />
             </Button>
           </div>
@@ -542,8 +542,8 @@ function TaskRow({ task, onToggle }: { task: TaskDTO; onToggle: (task: TaskDTO) 
         </p>
         {task.dueDate && (
           <p className={cn("mt-0.5 text-xs", overdue ? "font-medium text-destructive" : "text-muted-foreground")}>
-            Prazo: {format(new Date(task.dueDate), "d 'de' MMM", { locale: ptBR })}
-            {task.source === "coach" && !task.completed ? " · criada pelo Coach" : ""}
+            Due: {format(new Date(task.dueDate), "MMM d", { locale: enUS })}
+            {task.source === "coach" && !task.completed ? " · created by the Coach" : ""}
           </p>
         )}
       </div>
@@ -551,7 +551,7 @@ function TaskRow({ task, onToggle }: { task: TaskDTO; onToggle: (task: TaskDTO) 
   );
 }
 
-/* ---------------- IA Coach (chat + preparar sessão) ---------------- */
+/* ---------------- AI Coach (chat + session prep) ---------------- */
 
 function CoachChat({
   mentorshipId,
@@ -603,14 +603,14 @@ function CoachChat({
       setMessages((m) => [...m.filter((x) => x.id !== optimistic.id), res.userMessage, res.assistantMessage]);
       if (res.createdTasks.length > 0) {
         toast({
-          title: "Tarefa criada pelo Coach",
+          title: "Task created by the Coach",
           description: res.createdTasks.map((t) => t.title).join(" · "),
         });
         onTaskCreated();
       }
     } catch (e) {
       setMessages((m) => m.filter((x) => x.id !== optimistic.id));
-      toast({ title: "Falha ao enviar", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+      toast({ title: "Failed to send", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
     } finally {
       setSending(false);
     }
@@ -621,10 +621,10 @@ function CoachChat({
     try {
       const res = await api.prepare(mentorshipId);
       setPrepResult(res.prep);
-      toast({ title: "Preparação pronta!", description: "Copie a pauta e leve para a sessão." });
+      toast({ title: "Preparation ready!", description: "Copy the agenda and bring it to the session." });
       onTaskCreated();
     } catch (e) {
-      toast({ title: "Erro ao preparar", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+      toast({ title: "Error preparing session", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
     } finally {
       setPreparing(false);
     }
@@ -638,7 +638,7 @@ function CoachChat({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast({ title: "Não foi possível copiar automaticamente", description: "Selecione o texto e copie manualmente." });
+      toast({ title: "Couldn't copy automatically", description: "Select the text and copy it manually." });
     }
   }
 
@@ -650,8 +650,8 @@ function CoachChat({
             <Sparkles className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-navy">IA Coach</p>
-            <p className="text-xs text-muted-foreground">Apoio entre sessões · sempre com o contexto da sua mentoria</p>
+            <p className="text-sm font-bold text-navy">AI Coach</p>
+            <p className="text-xs text-muted-foreground">Support between sessions · always with your mentorship context</p>
           </div>
         </div>
         <Button
@@ -661,7 +661,7 @@ function CoachChat({
           className="mt-3 w-full gap-2 bg-gold font-semibold text-navy hover:bg-gold/90"
         >
           {preparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
-          Preparar próxima sessão
+          Prepare next session
         </Button>
       </div>
 
@@ -673,8 +673,8 @@ function CoachChat({
         )}
         {loaded && messages.length === 0 && (
           <div className="rounded-lg bg-secondary p-4 text-sm text-muted-foreground">
-            Olá! Eu sou seu Coach Collarint. Conheço seu objetivo, seu plano com {mentorName} e suas tarefas.
-            Me pergunte o que precisar — por exemplo: <em>&ldquo;como devo me preparar para a próxima sessão?&rdquo;</em>
+            Hi! I&apos;m your Collarint Coach. I know your goal, your plan with {mentorName}, and your tasks.
+            Ask me anything — for example: <em>&ldquo;how should I prepare for the next session?&rdquo;</em>
           </div>
         )}
         {messages.map((m) => (
@@ -717,12 +717,12 @@ function CoachChat({
           }}
         >
           <Input
-            placeholder="Escreva para o Coach..."
+            placeholder="Write to the Coach..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={sending}
           />
-          <Button type="submit" size="icon" className="shrink-0 bg-navy hover:bg-navy-light" disabled={sending || !input.trim()} aria-label="Enviar mensagem">
+          <Button type="submit" size="icon" className="shrink-0 bg-navy hover:bg-navy-light" disabled={sending || !input.trim()} aria-label="Send message">
             <Send className="h-4 w-4" />
           </Button>
         </form>
@@ -731,7 +731,7 @@ function CoachChat({
       <Dialog open={!!prepResult} onOpenChange={(open) => !open && setPrepResult(null)}>
         <DialogContent className="max-h-[80vh] sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-navy">Sua preparação para a próxima sessão</DialogTitle>
+            <DialogTitle className="text-navy">Your preparation for the next session</DialogTitle>
           </DialogHeader>
           <div className="scroll-slim max-h-[50vh] overflow-y-auto pr-2 text-sm">
             <MarkdownContent content={prepResult?.content ?? ""} />
@@ -739,7 +739,7 @@ function CoachChat({
           <DialogFooter>
             <Button onClick={copyPrep} className="gap-2 bg-navy hover:bg-navy-light">
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied ? "Copiado!" : "Copiar para área de transferência"}
+              {copied ? "Copied!" : "Copy to clipboard"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -770,14 +770,14 @@ function MenteePrepSection({
     <Card className="border-border shadow-sm">
       <CardContent className="p-5 sm:p-6">
         <SectionTitle
-          title="Preparação do mentorado"
-          subtitle="Pauta e perguntas geradas pelo IA Coach antes da sessão"
+          title="Mentee's preparation"
+          subtitle="Agenda and questions generated by the AI Coach before the session"
         />
         <div className="mt-4">
-          {loading && <p className="text-sm text-muted-foreground">Carregando...</p>}
+          {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
           {!loading && !prep && (
             <p className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
-              O mentorado ainda não gerou a preparação da próxima sessão.
+              The mentee hasn&apos;t generated the next session preparation yet.
             </p>
           )}
           {!loading && prep && (
@@ -787,15 +787,15 @@ function MenteePrepSection({
                   <Route className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-navy">Pauta + 5 perguntas prontas</p>
+                  <p className="text-sm font-semibold text-navy">Agenda + 5 ready-made questions</p>
                   <p className="text-xs text-muted-foreground">
-                    Gerada em{" "}
-                    {format(new Date(prep.createdAt), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                    Generated on{" "}
+                    {format(new Date(prep.createdAt), "MMMM d 'at' HH:mm", { locale: enUS })}
                   </p>
                 </div>
               </div>
               <Button size="sm" variant="outline" className="gap-1 border-gold/50" onClick={() => onOpen(prep)}>
-                <MessageSquare className="h-4 w-4" /> Ver preparação
+                <MessageSquare className="h-4 w-4" /> View preparation
               </Button>
             </div>
           )}
@@ -805,7 +805,7 @@ function MenteePrepSection({
   );
 }
 
-/* ---------------- Agendamento (mentor) ---------------- */
+/* ---------------- Scheduling (mentor) ---------------- */
 
 function ScheduleDialog({
   open,
@@ -831,11 +831,11 @@ function ScheduleDialog({
     setSaving(true);
     try {
       await api.scheduleSession(mentorshipId, d.toISOString());
-      toast({ title: "Sessão agendada!", description: format(d, "d 'de' MMMM 'às' HH:mm", { locale: ptBR }) });
+      toast({ title: "Session scheduled!", description: format(d, "MMMM d 'at' HH:mm", { locale: enUS }) });
       onOpenChange(false);
       onDone();
     } catch (e) {
-      toast({ title: "Erro ao agendar", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
+      toast({ title: "Error scheduling session", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -845,21 +845,21 @@ function ScheduleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-navy">Agendar próxima sessão</DialogTitle>
+          <DialogTitle className="text-navy">Schedule next session</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex justify-center rounded-lg border border-border p-2">
-            <Calendar mode="single" selected={date} onSelect={setDate} locale={ptBR} disabled={{ before: new Date() }} />
+            <Calendar mode="single" selected={date} onSelect={setDate} locale={enUS} disabled={{ before: new Date() }} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="sess-time">Hora</Label>
+            <Label htmlFor="sess-time">Time</Label>
             <Input id="sess-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
           <Button onClick={confirm} disabled={saving || !date} className="w-full gap-2 bg-navy hover:bg-navy-light">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarPlus className="h-4 w-4" />}
-            Confirmar agendamento
+            Confirm schedule
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -867,7 +867,7 @@ function ScheduleDialog({
   );
 }
 
-/* ---------------- Markdown leve ---------------- */
+/* ---------------- Lightweight markdown ---------------- */
 
 function MarkdownContent({ content }: { content: string }) {
   return (

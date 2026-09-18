@@ -1,24 +1,24 @@
 -- ============================================================
--- JCI Collarint — Schema Supabase (Postgres) com RLS
+-- JCI Collarint — Supabase (Postgres) schema with RLS
 -- ============================================================
--- Este schema espelha o modelo Prisma usado na demo local
--- (prisma/schema.prisma). Para migrar a plataforma do store
--- local (SQLite) para o Supabase real:
+-- This schema mirrors the Prisma model used in the local demo
+-- (prisma/schema.prisma). To migrate the platform from the local
+-- store (SQLite) to real Supabase:
 --
---   1. Crie um projeto em https://supabase.com
---   2. SQL Editor → cole este arquivo inteiro → Run
---   3. Preencha NEXT_PUBLIC_SUPABASE_URL e
---      NEXT_PUBLIC_SUPABASE_ANON_KEY no .env
---   4. Configure o Auth (email) em Authentication → Providers
---   5. Popule profiles (via seed ou cadastro pela UI)
+--   1. Create a project at https://supabase.com
+--   2. SQL Editor → paste this entire file → Run
+--   3. Fill in NEXT_PUBLIC_SUPABASE_URL and
+--      NEXT_PUBLIC_SUPABASE_ANON_KEY in .env
+--   4. Set up Auth (email) in Authentication → Providers
+--   5. Populate profiles (via seed or sign-up through the UI)
 --
--- Observação: no Postgres usamos tipos nativos (jsonb, uuid).
+-- Note: on Postgres we use native types (jsonb, uuid).
 -- ============================================================
 
 create extension if not exists "pgcrypto";
 
 -- ------------------------------------------------------------
--- Tabelas
+-- Tables
 -- ------------------------------------------------------------
 
 create table if not exists public.profiles (
@@ -113,7 +113,7 @@ create table if not exists public.notifications (
 create index if not exists idx_notifications_user on public.notifications(user_id);
 
 -- ------------------------------------------------------------
--- updated_at automático
+-- Automatic updated_at
 -- ------------------------------------------------------------
 
 create or replace function public.set_updated_at()
@@ -133,13 +133,13 @@ create trigger trg_mentorships_updated before update on public.mentorships
   for each row execute function public.set_updated_at();
 
 -- ------------------------------------------------------------
--- Row Level Security (RLS básica)
--- Regra geral: cada membro lê/escreve apenas seus próprios dados;
--- participantes de uma mentoria acessam os recursos dela.
+-- Row Level Security (basic RLS)
+-- General rule: each member reads/writes only their own data;
+-- mentorship participants access its resources.
 -- ------------------------------------------------------------
--- Importante: as policies abaixo assumem o Supabase Auth
--- (auth.uid() = profiles.id). No modo demo com auth próprio,
--- o acesso é mediado pelas API routes do Next.js (service role).
+-- Important: the policies below assume Supabase Auth
+-- (auth.uid() = profiles.id). In demo mode with its own auth,
+-- access is mediated by the Next.js API routes (service role).
 
 alter table public.profiles        enable row level security;
 alter table public.mentorships     enable row level security;
@@ -149,8 +149,8 @@ alter table public.coach_messages  enable row level security;
 alter table public.session_preps   enable row level security;
 alter table public.notifications   enable row level security;
 
--- profiles: todos os usuários autenticados podem ler perfis (necessário p/ matching);
--- cada um atualiza apenas o próprio.
+-- profiles: all authenticated users can read profiles (needed for matching);
+-- each one updates only their own.
 drop policy if exists "profiles_read" on public.profiles;
 create policy "profiles_read" on public.profiles
   for select using (auth.role() = 'authenticated');
@@ -163,8 +163,8 @@ drop policy if exists "profiles_insert_own" on public.profiles;
 create policy "profiles_insert_own" on public.profiles
   for insert with check (auth.uid() = id);
 
--- mentorships: apenas participantes leem; mentee propõe (insert),
--- atualização de status pelo mentor (aceite/recusa) ou pelo próprio app.
+-- mentorships: only participants read; the mentee requests (insert),
+-- status updates by the mentor (accept/decline) or by the app itself.
 drop policy if exists "mentorships_read_participant" on public.mentorships;
 create policy "mentorships_read_participant" on public.mentorships
   for select using (auth.uid() = mentor_id or auth.uid() = mentee_id);
@@ -177,7 +177,7 @@ drop policy if exists "mentorships_update_participant" on public.mentorships;
 create policy "mentorships_update_participant" on public.mentorships
   for update using (auth.uid() = mentor_id or auth.uid() = mentee_id);
 
--- Helper: participante da mentoria (usado nas policies filhas)
+-- Helper: mentorship participant (used in the child policies)
 create or replace function public.is_mentorship_participant(p_mentorship uuid)
 returns boolean as $$
   select exists (
@@ -186,7 +186,7 @@ returns boolean as $$
   );
 $$ language sql security definer stable;
 
--- sessions / tasks / coach_messages / session_preps: participantes
+-- sessions / tasks / coach_messages / session_preps: participants
 drop policy if exists "sessions_participant_all" on public.sessions;
 create policy "sessions_participant_all" on public.sessions
   for all using (public.is_mentorship_participant(mentorship_id))
@@ -207,7 +207,7 @@ create policy "session_preps_participant_all" on public.session_preps
   for all using (public.is_mentorship_participant(mentorship_id))
   with check (public.is_mentorship_participant(mentorship_id));
 
--- notifications: dono lê/atualiza; inserts acontecem via service role (app)
+-- notifications: owner reads/updates; inserts happen via service role (app)
 drop policy if exists "notifications_read_own" on public.notifications;
 create policy "notifications_read_own" on public.notifications
   for select using (auth.uid() = user_id);
@@ -217,10 +217,10 @@ create policy "notifications_update_own" on public.notifications
   for update using (auth.uid() = user_id);
 
 -- ------------------------------------------------------------
--- Embeddings (opcional, para escala)
+-- Embeddings (optional, for scale)
 -- ------------------------------------------------------------
--- A demo usa cosseno calculado na aplicação sobre jsonb. Para produção
--- com milhares de membros, considere pgvector:
+-- The demo uses cosine computed in the application over jsonb. For production
+-- with thousands of members, consider pgvector:
 --
 --   create extension if not exists vector;
 --   alter table public.profiles
@@ -228,4 +228,4 @@ create policy "notifications_update_own" on public.notifications
 --     add column learn_vec vector(1536);
 --   create index on public.profiles using hnsw (learn_vec vector_cosine_ops);
 --
--- text-embedding-3-small retorna vetores de 1536 dimensões.
+-- text-embedding-3-small returns 1536-dimension vectors.

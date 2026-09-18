@@ -6,16 +6,16 @@ import { taskToDTO } from "@/lib/serialize";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/mentorships/[id]/tasks — lista tarefas da mentoria */
+/** GET /api/mentorships/[id]/tasks — lists the mentorship's tasks */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireUser(req);
     const { id } = await ctx.params;
 
     const mentorship = await db.mentorship.findUnique({ where: { id } });
-    if (!mentorship) return jsonError("Mentoria não encontrada.", 404);
+    if (!mentorship) return jsonError("Mentorship not found.", 404);
     if (mentorship.mentorId !== user.id && mentorship.menteeId !== user.id) {
-      return jsonError("Sem permissão.", 403);
+      return jsonError("No permission.", 403);
     }
 
     const tasks = await db.task.findMany({
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
 }
 
-/** POST /api/mentorships/[id]/tasks — cria tarefa manual */
+/** POST /api/mentorships/[id]/tasks — creates a manual task */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireUser(req);
@@ -39,12 +39,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const dueDateStr = String(body?.dueDate ?? "");
     const dueDate = dueDateStr ? new Date(dueDateStr) : null;
 
-    if (title.length < 3) return jsonError("Descreva a tarefa (mínimo 3 caracteres).");
+    if (title.length < 3) return jsonError("Describe the task (minimum 3 characters).");
 
     const mentorship = await db.mentorship.findUnique({ where: { id } });
-    if (!mentorship) return jsonError("Mentoria não encontrada.", 404);
+    if (!mentorship) return jsonError("Mentorship not found.", 404);
     if (mentorship.mentorId !== user.id && mentorship.menteeId !== user.id) {
-      return jsonError("Sem permissão.", 403);
+      return jsonError("No permission.", 403);
     }
 
     const task = await db.task.create({

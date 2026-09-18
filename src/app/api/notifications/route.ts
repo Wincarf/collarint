@@ -6,7 +6,7 @@ import { notificationToDTO } from "@/lib/serialize";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/notifications — lista notificações do usuário */
+/** GET /api/notifications — lists the user's notifications */
 export async function GET(req: NextRequest) {
   try {
     const user = await requireUser(req);
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** PATCH /api/notifications — marca todas (ou uma) como lidas */
+/** PATCH /api/notifications — marks all (or one) as read */
 export async function PATCH(req: NextRequest) {
   try {
     const user = await requireUser(req);
