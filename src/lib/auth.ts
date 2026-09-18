@@ -3,12 +3,13 @@
 // as variáveis SUPABASE_* no .env e as telas continuam chamando os mesmos endpoints.
 
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import { db } from "./db";
 import type { Profile } from "@prisma/client";
 
 const COOKIE_NAME = "jci_session";
+const HEADER_NAME = "x-session-token";
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
 
 function authSecret(): string {
@@ -65,32 +66,54 @@ function parseSessionToken(token: string | undefined | null): string | null {
 
 // ---------- cookies ----------
 
-export const SESSION_COOKIE_OPTIONS = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  path: "/",
-  maxAge: SESSION_TTL_MS / 1000,
-};
+// A plataforma roda atrás de um proxy HTTPS (ver Caddyfile) e pode ser exibida
+// dentro de um iframe de outra origem. Cookies "lax" são descartados nesse
+// contexto por navegadores modernos, o que quebrava o login. Quando a requisição
+// chega por HTTPS usamos SameSite=None; Secure (aceito em iframes); no dev
+// local (http) mantemos lax, pois "none" exige "secure".
+async function isSecureRequest(): Promise<boolean> {
+  try {
+    const h = await headers();
+    const proto = h.get("x-forwarded-proto") ?? "";
+    return proto.split(",")[0]?.trim() === "https";
+  } catch {
+    return false;
+  }
+}
+
+async function sessionCookieOptions(maxAge = SESSION_TTL_MS / 1000) {
+  const secure = await isSecureRequest();
+  return {
+    httpOnly: true,
+    sameSite: (secure ? "none" : "lax") as "none" | "lax",
+    secure,
+    path: "/",
+    maxAge,
+  };
+}
 
 export async function setSessionCookie(profileId: string): Promise<void> {
   const store = await cookies();
-  store.set(COOKIE_NAME, createSessionToken(profileId), SESSION_COOKIE_OPTIONS);
+  store.set(COOKIE_NAME, createSessionToken(profileId), await sessionCookieOptions());
 }
 
 export async function clearSessionCookie(): Promise<void> {
   const store = await cookies();
-  store.set(COOKIE_NAME, "", { ...SESSION_COOKIE_OPTIONS, maxAge: 0 });
+  store.set(COOKIE_NAME, "", await sessionCookieOptions(0));
 }
 
 // ---------- usuário atual ----------
 
+// A sessão é resolvida primeiro pelo header x-session-token (fallback robusto
+// para ambientes que bloqueiam cookies de terceiros, ex.: preview em iframe)
+// e depois pelo cookie httpOnly (caminho principal).
 export async function getSessionProfile(req?: NextRequest): Promise<Profile | null> {
   let token: string | undefined | null;
   if (req) {
-    token = req.cookies.get(COOKIE_NAME)?.value;
+    token = req.cookies.get(COOKIE_NAME)?.value ?? req.headers.get(HEADER_NAME);
   } else {
-    const store = await cookies();
-    token = store.get(COOKIE_NAME)?.value;
+    const [store, h] = await Promise.all([cookies(), headers()]);
+    token = store.get(COOKIE_NAME)?.value ?? h.get(HEADER_NAME);
   }
   const pid = parseSessionToken(token);
   if (!pid) return null;

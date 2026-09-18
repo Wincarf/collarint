@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { setSessionCookie, verifyPassword } from "@/lib/auth";
+import { createSessionToken, setSessionCookie, verifyPassword } from "@/lib/auth";
 import { handleApiError, jsonError } from "@/lib/api-utils";
 
 export async function POST(req: NextRequest) {
@@ -17,7 +17,14 @@ export async function POST(req: NextRequest) {
     }
 
     await setSessionCookie(profile.id);
-    return NextResponse.json({ ok: true, onboarded: profile.onboarded, isAdmin: profile.isAdmin });
+    // O token também vai no corpo: o cliente o guarda e envia via header
+    // x-session-token quando o ambiente bloqueia cookies (ex.: iframe cross-site).
+    return NextResponse.json({
+      ok: true,
+      onboarded: profile.onboarded,
+      isAdmin: profile.isAdmin,
+      token: createSessionToken(profile.id),
+    });
   } catch (err) {
     return handleApiError(err);
   }

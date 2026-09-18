@@ -29,6 +29,11 @@ export function LoginView() {
 
   async function finishAuth() {
     const { user } = await api.me();
+    if (!user) {
+      // Sessão não persistiu (ex.: navegador bloqueou o cookie). Falha explícita
+      // em vez de deixar o botão carregando para sempre.
+      throw new Error("Não foi possível manter a sessão neste navegador. Recarregue a página e tente novamente.");
+    }
     setUser(user); // o AppRoot exibe o wizard de onboarding se o perfil estiver incompleto
   }
 
@@ -43,6 +48,7 @@ export function LoginView() {
         description: e instanceof Error ? e.message : "Verifique seus dados.",
         variant: "destructive",
       });
+    } finally {
       setLoading(false);
     }
   }
@@ -58,6 +64,7 @@ export function LoginView() {
         description: e instanceof Error ? e.message : "Verifique seus dados.",
         variant: "destructive",
       });
+    } finally {
       setLoading(false);
     }
   }
@@ -73,6 +80,7 @@ export function LoginView() {
         description: e instanceof Error ? e.message : "Tente novamente.",
         variant: "destructive",
       });
+    } finally {
       setDemoLoading(null);
     }
   }

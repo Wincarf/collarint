@@ -35,3 +35,21 @@ Stage Summary:
 - Demo nunca quebra: sem OPENAI_API_KEY usa SDK local + matching léxico; banco local SQLite com SQL Supabase pronto para migração
 - Seed: 12 perfis brasileiros realistas + 2 mentorias ativas + 1 convite pendente + notificações
 
+---
+Task ID: 3
+Agent: Super Z (main)
+Task: Correção do bug — botão de acesso rápido fica com loading infinito no preview
+
+Work Log:
+- Diagnóstico: POST /api/auth/login retornava 200 (backend OK), mas o cookie jci_session com SameSite=lax era descartado pelo browser no preview em iframe cross-site → /api/auth/me devolvia { user: null } com 200 → setUser(null) voltava ao login e demoLoading nunca era resetado (spinner infinito)
+- Fix camada 1 (lib/auth.ts): cookie dinâmico — atrás de proxy HTTPS (x-forwarded-proto) usa SameSite=None; Secure (aceito em iframe); no dev http mantém lax. getSessionProfile agora aceita token via header x-session-token como fallback (req.headers ou headers())
+- Fix camada 2 (login/register routes): resposta inclui token (HMAC, mesmo do cookie) para o cliente persistir
+- Fix camada 3 (api-client.ts): token em localStorage (jci_session_token), enviado como x-session-token em TODA requisição; limpo no logout; save/clear a prova de exceção
+- Fix camada 4 (login-view.tsx): finishAuth lança erro explícito se user vier null; loading/demoLoading resetados em finally — spinner infinito impossível, sempre há toast de erro
+- Testes curl: login 200 + Set-Cookie ✓ | me com cookie ✓ | me SÓ com header ✓ | me sem nada = null ✓
+- Teste browser (agent-browser): 4 acessos rápidos logam (Lucas→home c/ mentoria, Marcos, Carlos c/ convite, Admin c/ nav Admin) | sessão sobrevive a cookies clear + reload (fallback header) | logout OK | lint limpo | tsc limpo (só erros pré-existentes em skills/)
+
+Stage Summary:
+- Login funciona em qualquer ambiente: cookie (SameSite=None+Secure em https) + fallback determinístico por header/localStorage quando o browser bloqueia cookies de terceiros
+- Nenhuma regressão: mesmas telas, mesmos endpoints, cookie httpOnly continua mecanismo principal; migração p/ Supabase Auth intacta
+

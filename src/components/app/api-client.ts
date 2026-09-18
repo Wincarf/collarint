@@ -13,9 +13,15 @@ import type {
 } from "@/lib/types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = readToken();
   const res = await fetch(url, {
     ...options,
-    headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      // Fallback de sessão para ambientes que bloqueiam cookies (preview em iframe)
+      ...(token ? { "x-session-token": token } : {}),
+      ...(options?.headers ?? {}),
+    },
     cache: "no-store",
   });
   const data = await res.json().catch(() => ({}));
@@ -25,22 +31,65 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return data as T;
 }
 
+// Token de sessão: guardado junto do cookie httpOnly para que o login continue
+// funcionando mesmo quando o navegador recusa cookies de terceiros no iframe.
+const TOKEN_KEY = "jci_session_token";
+
+function readToken(): string | null {
+  try {
+    return window.localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function saveToken(token: string): void {
+  try {
+    window.localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    // localStorage indisponível — o cookie segue como mecanismo principal
+  }
+}
+
+function clearToken(): void {
+  try {
+    window.localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // ignora
+  }
+}
+
 export const api = {
   me: () => request<{ user: ProfileDTO | null }>("/api/auth/me"),
 
-  login: (email: string, password: string) =>
-    request<{ ok: boolean; onboarded: boolean; isAdmin: boolean }>("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    }),
+  login: async (email: string, password: string) => {
+    const data = await request<{ ok: boolean; onboarded: boolean; isAdmin: boolean; token?: string }>(
+      "/api/auth/login",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      }
+    );
+    if (data.token) saveToken(data.token);
+    return data;
+  },
 
-  register: (name: string, email: string, password: string) =>
-    request<{ ok: boolean }>("/api/auth/register", {
+  register: async (name: string, email: string, password: string) => {
+    const data = await request<{ ok: boolean; token?: string }>("/api/auth/register", {
       method: "POST",
       body: JSON.stringify({ name, email, password }),
-    }),
+    });
+    if (data.token) saveToken(data.token);
+    return data;
+  },
 
-  logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+  logout: async () => {
+    try {
+      return await request<{ ok: boolean }>("/api/auth/logout", { method: "POST" });
+    } finally {
+      clearToken();
+    }
+  },
 
   saveProfile: (payload: {
     teachSkills: unknown;

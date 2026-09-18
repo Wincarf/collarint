@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { hashPassword, setSessionCookie } from "@/lib/auth";
+import { hashPassword, createSessionToken, setSessionCookie } from "@/lib/auth";
 import { handleApiError, jsonError } from "@/lib/api-utils";
 import { AVATAR_COLORS } from "@/lib/skills";
 
@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
     });
 
     await setSessionCookie(profile.id);
-    return NextResponse.json({ ok: true, onboarded: false });
+    // Token no corpo como fallback para ambientes que bloqueiam cookies (iframe).
+    return NextResponse.json({ ok: true, onboarded: false, token: createSessionToken(profile.id) });
   } catch (err) {
     return handleApiError(err);
   }
