@@ -7,19 +7,33 @@ import { initialsOf } from "@/lib/skills";
 import { Badge } from "@/components/ui/badge";
 import { LEVEL_LABELS, type SkillEntry } from "@/lib/types";
 
+// Brand mark: two interlocked links forming a "C" — mentor (gold) and mentee (white) connected.
+export function BrandMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
+      <defs>
+        <linearGradient id="jciNavyG" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0A1F44" />
+          <stop offset="100%" stopColor="#1F3A68" />
+        </linearGradient>
+        <linearGradient id="jciGoldG" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#E7C065" />
+          <stop offset="100%" stopColor="#C79530" />
+        </linearGradient>
+      </defs>
+      <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#jciNavyG)" />
+      <rect x="2.75" y="2.75" width="58.5" height="58.5" rx="13.25" fill="none" stroke="#FFFFFF" strokeOpacity="0.14" strokeWidth="1.5" />
+      <ellipse cx="41" cy="32" rx="7" ry="12.5" fill="none" stroke="#FFFFFF" strokeWidth="5.5" />
+      <path d="M39.57 20.66 A15.5 15.5 0 1 0 39.57 43.34" fill="none" stroke="url(#jciGoldG)" strokeWidth="7" strokeLinecap="round" />
+      <path d="M38.61 20.25 A7 12.5 0 0 1 45.02 21.76" fill="none" stroke="#FFFFFF" strokeWidth="5.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function BrandLogo({ dark = false, compact = false }: { dark?: boolean; compact?: boolean }) {
   return (
     <div className="flex items-center gap-2 select-none">
-      <span
-        className={cn(
-          "flex items-center justify-center rounded-lg text-white font-bold",
-          compact ? "h-8 w-8 text-sm" : "h-9 w-9 text-base"
-        )}
-        style={{ background: "linear-gradient(135deg, #0A1F44 0%, #1F3A68 100%)" }}
-        aria-hidden="true"
-      >
-        <span className="text-gold">J</span>CI
-      </span>
+      <BrandMark className={cn("shrink-0", compact ? "h-8 w-8" : "h-9 w-9")} />
       <span className={cn("font-bold tracking-tight", compact ? "text-lg" : "text-xl", dark ? "text-white" : "text-navy")}>
         Collarint
       </span>

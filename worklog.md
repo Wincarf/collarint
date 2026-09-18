@@ -127,3 +127,20 @@ Work Log:
 Stage Summary:
 - Projeto 100% em inglês (nomes próprios das pessoas mantidos); terminologia consistente: mentorship/mentee/session/task/plan/AI Coach/Prepare next session/Agenda
 - Fallback de matching ajustado ao novo idioma dos dados; demo resetada pristine
+
+---
+Task ID: 6
+Agent: Super Z (main)
+Task: Novo logo da marca JCI Collarint (solicitação do usuário)
+
+Work Log:
+- Diagnóstico: public/logo.svg era o "Z" genérico do scaffold, sem referência no app; a marca visível era o componente BrandLogo (quadrado CSS com texto "JCI"); não havia favicon
+- Conceito aprovado pelo usuário via questionário: "Elos entrelaçados formando um C", aplicação em tudo, selo navy com detalhe gold
+- Novo símbolo vetorial desenhado à mão (viewBox 64): C dourado (gradiente #E7C065→#C79530, r 15.5, stroke 7, gap ±47°) + elo branco entrelaçado (ellipse cx41 cy32 rx7 ry12.5, stroke 5.5) com efeito de trama (branco sobre dourado no topo via arco parcial) sobre selo navy arredondado (gradiente #0A1F44→#1F3A68) com borda branca 0.14 de opacidade (legibilidade em header navy)
+- public/logo.svg substituído; favicon criado em src/app/icon.svg (servido 200 pelo Next)
+- ui-bits.tsx: BrandMark extraído (SVG inline reutilizável) e BrandLogo reescrito para usá-lo + wordmark "Collarint"; dark/compact preservados; login-view, onboarding-wizard e app-root atualizados automaticamente via componente
+- Verificação: tsc sem erros no app (só pré-existentes em examples/ e skills/); lint limpo; screenshots validados — login (selo grande), /logo.svg em 512px (trama visível), header pós quick-login como Lucas (selo compacto legível)
+
+Stage Summary:
+- Marca própria em todos os pontos: logo.svg, favicon da aba, header, login e onboarding; conceito "elos" amarra o nome Collarint (corrente) com a proposta mentor-mentee
+- Nenhuma mudança de lógica ou contrato; pallete oficial mantida (navy #0A1F44, gold #D4A843)
