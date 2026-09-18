@@ -553,6 +553,13 @@ function TaskRow({ task, onToggle }: { task: TaskDTO; onToggle: (task: TaskDTO) 
 
 /* ---------------- AI Coach (chat + session prep) ---------------- */
 
+const COACH_SUGGESTIONS = [
+  "How should I prepare for the next session?",
+  "What should I focus on this week?",
+  "I just finished one of my tasks!",
+  "Summarize my progress so far.",
+];
+
 function CoachChat({
   mentorshipId,
   mentorName,
@@ -568,6 +575,7 @@ function CoachChat({
   const [loaded, setLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [streamText, setStreamText] = useState("");
   const [preparing, setPreparing] = useState(false);
   const [prepResult, setPrepResult] = useState<{ content: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -584,13 +592,12 @@ function CoachChat({
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, sending]);
+  }, [messages, sending, streamText]);
 
-  async function send() {
-    const text = input.trim();
+  async function sendText(text: string) {
     if (!text || sending) return;
-    setInput("");
     setSending(true);
+    setStreamText("");
     const optimistic: CoachMsg = {
       id: `tmp-${Date.now()}`,
       role: "user",
@@ -599,13 +606,23 @@ function CoachChat({
     };
     setMessages((m) => [...m, optimistic]);
     try {
-      const res = await api.coachSend(mentorshipId, text);
+      const res = await api.coachSendStream(mentorshipId, text, {
+        onDelta: (chunk) => setStreamText((s) => s + chunk),
+      });
       setMessages((m) => [...m.filter((x) => x.id !== optimistic.id), res.userMessage, res.assistantMessage]);
       if (res.createdTasks.length > 0) {
         toast({
           title: "Task created by the Coach",
           description: res.createdTasks.map((t) => t.title).join(" · "),
         });
+      }
+      if (res.completedTasks.length > 0) {
+        toast({
+          title: "Task completed",
+          description: res.completedTasks.map((t) => t.title).join(" · "),
+        });
+      }
+      if (res.createdTasks.length > 0 || res.completedTasks.length > 0) {
         onTaskCreated();
       }
     } catch (e) {
@@ -613,7 +630,15 @@ function CoachChat({
       toast({ title: "Failed to send", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
     } finally {
       setSending(false);
+      setStreamText("");
     }
+  }
+
+  function send() {
+    const text = input.trim();
+    if (!text || sending) return;
+    setInput("");
+    void sendText(text);
   }
 
   async function prepareSession() {
@@ -672,9 +697,24 @@ function CoachChat({
           </div>
         )}
         {loaded && messages.length === 0 && (
-          <div className="rounded-lg bg-secondary p-4 text-sm text-muted-foreground">
-            Hi! I&apos;m your Collarint Coach. I know your goal, your plan with {mentorName}, and your tasks.
-            Ask me anything — for example: <em>&ldquo;how should I prepare for the next session?&rdquo;</em>
+          <div className="space-y-3">
+            <div className="rounded-lg bg-secondary p-4 text-sm text-muted-foreground">
+              Hi! I&apos;m your Collarint Coach. I know your goal, your plan with {mentorName}, and your tasks.
+              Pick a topic or ask me anything:
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {COACH_SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => void sendText(s)}
+                  disabled={sending}
+                  className="rounded-lg border border-border bg-card px-3 py-2 text-left text-xs font-medium text-foreground shadow-sm transition hover:border-gold hover:bg-gold/10 disabled:opacity-50"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {messages.map((m) => (
@@ -695,7 +735,14 @@ function CoachChat({
             </div>
           </div>
         ))}
-        {sending && (
+        {sending && streamText && (
+          <div className="flex justify-start">
+            <div className="max-w-[92%] rounded-2xl rounded-bl-md border border-border bg-card px-3.5 py-2.5 text-sm text-foreground">
+              <MarkdownContent content={streamText} />
+            </div>
+          </div>
+        )}
+        {sending && !streamText && (
           <div className="flex justify-start">
             <div className="rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3">
               <span className="flex gap-1">

@@ -7,8 +7,6 @@
 //
 // No call fails due to a missing credential: the demo never breaks.
 
-import type { CoachChatResult } from "./types";
-
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 
 export function aiMode(): "openai" | "fallback" {
@@ -67,16 +65,102 @@ export async function chatComplete(messages: ChatMessage[], jsonMode = false): P
   return zaiChat(messages);
 }
 
+/** Tolerant JSON parse: strips code fences and grabs the first {...} block. */
+export function parseLooseJSON<T>(raw: string): T | null {
+  try {
+    const cleaned = raw
+      .replace(/```(?:json)?/gi, "")
+      .trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start < 0 || end <= start) return null;
+    return JSON.parse(cleaned.slice(start, end + 1)) as T;
+  } catch {
+    return null;
+  }
+}
+
 /** Chat asking for JSON; tolerant parse (strips code fences). */
 export async function chatJSON<T>(messages: ChatMessage[]): Promise<T> {
   const raw = await chatComplete(messages, true);
-  const cleaned = raw
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
-  const start = cleaned.search(/[[{]/);
-  const candidate = start >= 0 ? cleaned.slice(start) : cleaned;
-  return JSON.parse(candidate) as T;
+  const parsed = parseLooseJSON<T>(raw);
+  if (parsed === null) throw new Error("Invalid JSON reply");
+  return parsed;
+}
+
+// ------------------------------------------------------------------ streaming chat
+
+/** Replays an already-complete text as smooth word-by-word chunks (fallback mode). */
+export async function simulateStream(text: string, onDelta: (chunk: string) => void): Promise<void> {
+  const tokens = text.match(/\S+\s*/g) ?? [text];
+  // Keep the whole replay under ~4s regardless of reply length.
+  const group = Math.max(1, Math.ceil(tokens.length / 200));
+  for (let i = 0; i < tokens.length; i += group) {
+    onDelta(tokens.slice(i, i + group).join(""));
+    await new Promise((resolve) => setTimeout(resolve, 18));
+  }
+}
+
+/**
+ * Streams a plain-text reply (no JSON wrapper), calling onDelta for each chunk
+ * and returning the full text.
+ * • OpenAI mode: real SSE token streaming from the API.
+ * • Fallback mode: full SDK reply replayed as smooth simulated chunks.
+ */
+export async function streamChatComplete(
+  messages: ChatMessage[],
+  onDelta: (chunk: string) => void
+): Promise<string> {
+  if (OPENAI_KEY) {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages,
+        temperature: 0.7,
+        stream: true,
+      }),
+    });
+    if (!res.ok || !res.body) throw new Error(`OpenAI stream ${res.status}`);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let full = "";
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const payload = trimmed.slice(5).trim();
+        if (payload === "[DONE]") continue;
+        try {
+          const json = JSON.parse(payload);
+          const chunk: string | undefined = json?.choices?.[0]?.delta?.content;
+          if (chunk) {
+            full += chunk;
+            onDelta(chunk);
+          }
+        } catch {
+          // partial SSE line — ignored
+        }
+      }
+    }
+    if (!full.trim()) throw new Error("OpenAI stream: empty response");
+    return full;
+  }
+
+  // Fallback: one full SDK call, replayed as a smooth stream for the user.
+  const text = await zaiChat(messages);
+  await simulateStream(text, onDelta);
+  return text;
 }
 
 // ------------------------------------------------------------------ embeddings
@@ -245,6 +329,11 @@ Your role is to support the MENTEE between sessions with their mentor. Rules:
 - ALWAYS end your reply by suggesting ONE concrete, specific action for the next few days.
 - Be concise: 2 to 4 short paragraphs at most. Use light markdown (bold, short lists) when it helps.`;
 
-export const COACH_JSON_INSTRUCTION = `MANDATORY reply format: a single valid JSON object, no text outside the JSON:
-{"reply": "your reply in light markdown", "tasks": [{"title": "concrete task", "dueInDays": 7}]}
-Rules for "tasks": create at most 1 task per reply; create one ONLY when the mentee commits to something new or asks for help organizing something; "dueInDays" is an integer from 1 to 30. If there is no new task, use "tasks": [].`;
+/** Post-reply action extraction: which tasks to create and which pending tasks to mark as done. */
+export const COACH_EXTRACT_SYSTEM = `You extract mentoring actions from a coaching conversation.
+Return ONLY a single valid JSON object, with no text outside the JSON:
+{"tasks": [{"title": "concrete task", "dueInDays": 7}], "completeTasks": ["title copied from the pending task list"]}
+Rules:
+- "tasks": at most 1; create one ONLY when the mentee explicitly commits to a NEW future action ("I will...", "I commit to...", "can you set that up?") or asks for help organizing something. If the mentee is only reporting back that they already finished something, do NOT create a task — use "completeTasks" for that. "dueInDays" is an integer from 1 to 30. Otherwise use [].
+- "completeTasks": copy the title from the PENDING TASK LIST that the mentee explicitly said they finished, did or completed. Never guess. Otherwise use [].
+- Titles in "tasks" must describe the ACTION, not quote the mentee (max. 12 words). Never use the mentee's whole message as a title.`;

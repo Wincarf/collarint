@@ -143,16 +143,70 @@ export const api = {
       `/api/mentorships/${id}/coach`
     ),
 
-  coachSend: (id: string, message: string) =>
-    request<{
+  coachSendStream: async (
+    id: string,
+    message: string,
+    handlers: { onDelta: (chunk: string) => void }
+  ) => {
+    const token = readToken();
+    const res = await fetch(`/api/mentorships/${id}/coach`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // Session fallback for environments that block cookies (preview in an iframe)
+        ...(token ? { "x-session-token": token } : {}),
+      },
+      body: JSON.stringify({ message }),
+      cache: "no-store",
+    });
+    if (!res.ok || !res.body) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(data.error || "Connection error. Please try again.");
+    }
+
+    // SSE: data: {"type":"delta","t":"..."} ... data: {"type":"done", ...}
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let final: {
       ok: boolean;
       userMessage: CoachMessageDTO;
       assistantMessage: CoachMessageDTO;
       createdTasks: Array<{ id: string; title: string }>;
-    }>(`/api/mentorships/${id}/coach`, {
-      method: "POST",
-      body: JSON.stringify({ message }),
-    }),
+      completedTasks: Array<{ id: string; title: string }>;
+    } | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() ?? "";
+      for (const part of parts) {
+        const line = part.split("\n").find((l) => l.startsWith("data:"));
+        if (!line) continue;
+        try {
+          const evt = JSON.parse(line.slice(5).trim()) as
+            | { type: "delta"; t: string }
+            | {
+                type: "done";
+                ok: boolean;
+                userMessage: CoachMessageDTO;
+                assistantMessage: CoachMessageDTO;
+                createdTasks: Array<{ id: string; title: string }>;
+                completedTasks: Array<{ id: string; title: string }>;
+              };
+          if (evt.type === "delta") handlers.onDelta(evt.t);
+          else if (evt.type === "done") final = evt;
+        } catch {
+          // partial frame — ignored
+        }
+      }
+    }
+
+    if (!final) throw new Error("The Coach reply was interrupted. Please try again.");
+    return final;
+  },
 
   prepare: (id: string) =>
     request<{ ok: boolean; prep: { content: string; createdAt: string } }>(

@@ -144,3 +144,21 @@ Work Log:
 Stage Summary:
 - Marca própria em todos os pontos: logo.svg, favicon da aba, header, login e onboarding; conceito "elos" amarra o nome Collarint (corrente) com a proposta mentor-mentee
 - Nenhuma mudança de lógica ou contrato; pallete oficial mantida (navy #0A1F44, gold #D4A843)
+
+---
+Task ID: 7
+Agent: Super Z (main)
+Task: Aprimoramentos do AI Coach — pacote demo (streaming + concluir tarefas pelo chat + chips + retry JSON)
+
+Work Log:
+- ai.ts: streamChatComplete (OpenAI com SSE real stream:true; fallback GLM com replay simulado palavra a palavra ~18ms/chunk, total <4s), simulateStream exportado, parseLooseJSON tolerante, COACH_EXTRACT_SYSTEM (extração dedicada de ações), COACH_JSON_INSTRUCTION removida; chatJSON agora usa parseLooseJSON
+- coach/route.ts: POST reescrito para SSE (Content-Type text/event-stream, X-Accel-Buffering no) com eventos {type:"delta"} e {type:"done", userMessage, assistantMessage, createdTasks, completedTasks}; reply em texto puro (sem wrapper JSON); extração de ações em chamada dedicada pós-stream (JSON mode no OpenAI) com 1 retry de nudge "reply ONLY JSON"; conclusão de tarefas via fuzzyMatchTask (normalização NFD/minúsculas/pontuação + igualdade, substring ou overlap de tokens ≥0.6); guards contra extrator fraco: rejeita título-report-back (/^i (finished|did|completed|done|just)/) e títulos >14 palavras; fallback de contingência também é streamado
+- api-client.ts: coachSend substituído por coachSendStream (fetch + ReadableStream reader, parse de frames SSE, injeta x-session-token para preview em iframe)
+- mentorship-view.tsx (CoachChat): estado streamText renderiza bolha do assistente progressivamente (MarkdownContent), typing dots só antes do 1º delta, 4 chips de sugestão no estado vazio (prepare session / focus this week / finished a task / summarize progress) que enviam direto, toast "Task completed" além do "Task created", onTaskCreated dispara para created OU completed
+- Correções durante QA: extrator criava tarefa citando a mensagem inteira do mentee → prompt endurecido ("Never use the mentee's whole message as a title", report-back não cria tarefa) + guards de código; descoberta de dev server servindo rota antiga em um dos testes (validado depois via curl)
+- E2E: chips visíveis e funcionais; "I finished the 90-second pitch task..." → tarefa "Record a 90-second pitch..." riscada/concluída via fuzzy match (e autocorrigiu a tarefa lixo legada); "I commit to practicing my pitch every morning..." → tarefa limpa "Set up daily calendar reminder for pitch practice"; scripts/prove-stream.ts: 128 deltas, primeiro em 2552ms, último em 4887ms (spread 2335ms) = streaming progressivo comprovado; tsc e lint limpos; seed resetado ao final (pristine)
+- Arquivos auxiliares: scripts/clear-coach.ts (limpa histórico do coach p/ testar estado vazio), scripts/prove-stream.ts (medição de streaming)
+
+Stage Summary:
+- Coach agora responde em streaming (progressivo nos dois modos), conclui tarefas existentes pelo chat com fuzzy match, cria tarefas com títulos acionáveis (com guards), chips de sugestão reduzem atrito na demo, extração de ações tem retry JSON — coach-only para o mentee mantido
+- Demo resetada: 12 usuários, password demo1234, mentorias/sessões/tarefas do seed original
