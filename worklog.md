@@ -200,3 +200,21 @@ Work Log:
 Stage Summary:
 - Projeto auditado e endurecido sem nenhuma quebra de comportamento: auth robusta, autorização por participação, CSRF via proxy, rate limits, headers, erros sem vazamento
 - README documenta tudo que está embutido e pronto (features, demo, segurança, API, migração Supabase)
+
+---
+Task ID: 10
+Agent: Super Z (main)
+Task: Correção do erro "Cross-origin request blocked." no preview (falso positivo do CSRF da Task 9)
+
+Work Log:
+- Reprodução com curl: POST /api/auth/login com Origin de outro host → 403 {"error":"Cross-origin request blocked."} — mensagem é do próprio app (proxy.ts da Task 9)
+- Causa raiz: proxy.ts comparava Origin host == Host (ou x-forwarded-host); atrás do gateway de preview o Origin chega como o domínio público (preview-xxx.space-z.ai) mas o Host chega reescrito (localhost:3000) → toda mutação (POST/PATCH/DELETE: login, tasks, coach SSE...) era rejeitada com 403; GETs passavam
+- Fix em src/proxy.ts: filtro de dois sinais — (1) Sec-Fetch-Site (todos os browsers modernos): rejeita apenas "cross-site", imune a reescrita de Host pelo proxy; (2) fallback legacy: Origin host contra Host + cada entrada de X-Forwarded-Host (lista separada por vírgula); sem Origin (curl/server-to-server) e GET/HEAD/OPTIONS continuam passando
+- QA curl (5 cenários): preview+same-origin=200+token ✓ | evil.com+cross-site=403 ✓ | legacy+X-Forwarded-Host=200 ✓ | legacy localhost=200 ✓ | legacy evil.com=403 ✓ — proteção CSRF mantida nos dois vetores de ataque
+- README.md: linha CSRF da tabela Security e comentário do proxy.ts na estrutura atualizados para descrever o mecanismo de dois sinais
+- tsc limpo no app; seed conferido pristine (lucas: 3 tasks, 2 msgs do coach)
+- Nota de ambiente: processo em background morre entre comandos do shell — servidor e testes rodam no mesmo comando via (setsid bun run dev &) + sleep
+
+Stage Summary:
+- Falso positivo do CSRF atrás do preview proxy eliminado: login/tasks/coach funcionam novamente para o usuário no preview, e o bloqueio de cross-site real (CSRF) continua ativo
+- README reflete o mecanismo final do proxy.ts

@@ -84,7 +84,7 @@ The login screen has **quick access** buttons for all of them.
 | Passwords | scrypt + 16-byte random salt, `timingSafeEqual` comparison |
 | Session | HMAC-SHA256 signed token with 7-day expiry, httpOnly cookie (`SameSite=None; Secure` behind the HTTPS proxy, `Lax` on local http) + `x-session-token` header fallback for iframe previews |
 | Authorization | Every API route resolves the user first; mentorship resources are gated by **participant** check; `respond` = mentor only; scheduling = mentor only; session prep = mentee only; admin stats = `isAdmin` |
-| CSRF | `src/proxy.ts` (Next 16 proxy convention) rejects any POST/PATCH/PUT/DELETE whose `Origin` host differs from the deployment host — blocks cross-site form attacks (incl. `text/plain` forms) without breaking the iframe preview |
+| CSRF | `src/proxy.ts` (Next 16 proxy convention) filters every POST/PATCH/PUT/DELETE with two signals: **`Sec-Fetch-Site`** (all modern browsers — the browser itself declares `cross-site` requests, which are rejected; immune to proxy host rewriting) and, for legacy clients, an `Origin` host check against `Host`/`X-Forwarded-Host`. Blocks cross-site form attacks (incl. `text/plain` forms) without breaking the iframe preview |
 | Rate limiting | In-memory sliding windows: login 10/min per email+IP, register 10/min per IP, Coach 30/5min per user, session prep 10/5min per user |
 | Input validation | Length caps on every field (messages 2000, task titles 160, notes 3000, goal 600, invite 1000, email 120), whitelists for enums (availability, actions), date parsing guards |
 | Error hygiene | Internal errors are logged server-side only; the client receives a generic 500 message (no stack/Prisma leakage) |
@@ -137,7 +137,8 @@ The data layer is isolated in `src/lib/db.ts` (Prisma) and the serializers in `s
 
 ```
 src/
-├─ proxy.ts                    # CSRF origin check for all /api mutations
+├─ proxy.ts                    # CSRF filter for all /api mutations (Sec-Fetch-Site
+│                              # + Origin/X-Forwarded-Host fallback)
 ├─ app/
 │  ├─ page.tsx                 # Main SPA (single route)
 │  ├─ icon.svg                 # Favicon (brand mark)
