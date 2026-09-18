@@ -1,6 +1,6 @@
 # JCI Collarint — Skill-Based Mentoring Platform
 
-MVP of the **JCI (Junior Chamber International)** platform that connects experienced members (mentors) with those seeking professional development (mentees), featuring **semantic skill matching** and an **AI Coach** that supports the mentee between sessions.
+MVP of the **JCI Collarint** platform that connects experienced members (mentors) with those seeking professional development (mentees), featuring **semantic skill matching** and an **AI Coach** that supports the mentee between sessions.
 
 ## Feature highlights
 
